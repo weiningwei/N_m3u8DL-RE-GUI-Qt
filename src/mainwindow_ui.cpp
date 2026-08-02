@@ -343,21 +343,7 @@ void MainWindow::buildFoldableSettings()
     m_tabs->setMaximumHeight(260);
     m_root->addWidget(m_tabs);
 
-    // ====== 可折叠"高级"面板：路径 + 命令预览 ======
-    m_foldToggle = new QPushButton("▶ 高级");
-    m_foldToggle->setFlat(true);
-    m_foldToggle->setCursor(Qt::PointingHandCursor);
-    m_foldToggle->setStyleSheet(
-        "QPushButton { text-align: left; font-weight: bold; padding: 5px; "
-        "border: none; font-size: 13px; }");
-    connect(m_foldToggle, &QPushButton::clicked,
-            this, &MainWindow::onFoldSettings);
-    m_root->addWidget(m_foldToggle);
-
-    m_foldWidget = new QWidget();
-    auto *fold = new QVBoxLayout(m_foldWidget);
-    fold->setContentsMargins(0, 4, 0, 8);
-    fold->setSpacing(6);
+    // ====== 路径与命令预览（直接展示，不折叠）======
 
     // 程序 / ffmpeg 路径
     {
@@ -370,7 +356,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_exeBtn, &QPushButton::clicked,
                 this, &MainWindow::browseExe);
         exeRow->addWidget(m_exeBtn);
-        fold->addLayout(exeRow);
+        m_root->addLayout(exeRow);
 
         auto *ffRow = new QHBoxLayout();
         ffRow->addWidget(new QLabel("ffmpeg:"));
@@ -381,7 +367,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_ffmpegBtn, &QPushButton::clicked,
                 this, [this]() { browseFor(m_ffmpegPath, false); });
         ffRow->addWidget(m_ffmpegBtn);
-        fold->addLayout(ffRow);
+        m_root->addLayout(ffRow);
 
         connect(m_exePath, &QLineEdit::textChanged,
                 this, [this]() { onPathTextChanged(m_exePath); });
@@ -400,11 +386,8 @@ void MainWindow::buildFoldableSettings()
         connect(m_copyBtn, &QPushButton::clicked,
                 this, &MainWindow::copyCommand);
         cmdRow->addWidget(m_copyBtn);
-        fold->addLayout(cmdRow);
+        m_root->addLayout(cmdRow);
     }
-
-    m_foldWidget->setVisible(false);
-    m_root->addWidget(m_foldWidget);
 }
 
 void MainWindow::buildMonitorArea()
@@ -457,7 +440,6 @@ void MainWindow::setupTabOrder()
     chain << m_input << m_startBtn
           << m_saveNameEdit << m_queueEnabledBox << m_maxConcurrentBox
           << m_stopBtn << m_genBtn << m_openBtn
-          << m_foldToggle
           << m_exePath << m_exeBtn << m_ffmpegPath << m_ffmpegBtn;
 
     // 选项标签页内的控件（m_tabs 在 foldWidget 内）

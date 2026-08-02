@@ -206,22 +206,6 @@ void MainWindow::onMaxConcurrentChanged(int v)
     maybeStartQueued();
 }
 
-void MainWindow::onFoldSettings()
-{
-    const bool expanded = m_foldWidget && m_foldWidget->isVisible();
-    if (expanded) {
-        m_foldWidget->setVisible(false);
-        if (m_foldToggle)
-            m_foldToggle->setText("▶ 高级");
-    } else {
-        m_foldWidget->setVisible(true);
-        if (m_foldToggle)
-            m_foldToggle->setText("▼ 高级");
-    }
-    auto s = portableSettings();
-    s.setValue("foldExpanded", !expanded);
-}
-
 void MainWindow::stopDownload()
 {
     // 先清空等待队列，避免随后 processFinished 的自动续传逻辑把等待任务重新拉起。

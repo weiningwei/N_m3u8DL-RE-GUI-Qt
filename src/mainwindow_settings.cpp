@@ -128,11 +128,6 @@ void MainWindow::resetWidgetsToDefaults()
         m_maxConcurrentBox->setValue(5);
         m_maxConcurrentBox->setEnabled(false);
     }
-    // 折叠设置面板
-    if (m_foldWidget) {
-        m_foldWidget->setVisible(false);
-        if (m_foldToggle) m_foldToggle->setText("▶ 高级");
-    }
     setTheme("跟随系统");
     m_alwaysOnTopAction->blockSignals(true);
     m_alwaysOnTopAction->setChecked(false);
@@ -219,7 +214,6 @@ void MainWindow::saveSettings()
     s.setValue("ffmpegPath", m_ffmpegPath->text());
     s.setValue("queueEnabled", m_queueEnabledBox ? m_queueEnabledBox->isChecked() : false);
     s.setValue("maxConcurrent", m_maxConcurrentBox ? m_maxConcurrentBox->value() : 5);
-    s.setValue("foldExpanded", m_foldWidget ? m_foldWidget->isVisible() : false);
     // 注意：链接/文件 与 保存文件名 不持久化
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
@@ -259,15 +253,6 @@ void MainWindow::loadSettings()
         m_queueEnabledBox->setChecked(queueOn);
         m_maxConcurrentBox->setValue(maxConc);
         m_maxConcurrentBox->setEnabled(queueOn);
-    }
-    // 设置面板折叠状态。
-    {
-        const bool fold = s.value("foldExpanded", false).toBool();
-        if (m_foldWidget) {
-            m_foldWidget->setVisible(fold);
-            if (m_foldToggle)
-                m_foldToggle->setText(fold ? "▼ 高级" : "▶ 高级");
-        }
     }
     // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复
     for (const Entry &e : m_entries) {
