@@ -101,35 +101,68 @@ void MainWindow::buildToolbar()
     toolBar->addAction(resetAction);
 }
 
-void MainWindow::buildInputArea()
+void MainWindow::buildInputRow()
 {
-    auto *exeRow = new QHBoxLayout();
-    exeRow->addWidget(new QLabel("程序路径:"));
-    m_exePath = new QLineEdit();
-    m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
-    exeRow->addWidget(m_exePath, 1);
-    auto *exeBtn = new QPushButton("浏览...");
-    m_exeBtn = exeBtn;
-    connect(exeBtn, &QPushButton::clicked, this, &MainWindow::browseExe);
-    exeRow->addWidget(exeBtn);
-    m_root->addLayout(exeRow);
+    // 链接输入 + 开始下载按钮：置顶、醒目。
+    auto *row = new QHBoxLayout();
+    row->addWidget(new QLabel("链接:"));
+    m_input = new QLineEdit();
+    m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
+    m_input->setMinimumHeight(28);
+    row->addWidget(m_input, 1);
+    m_startBtn = new QPushButton("开始下载");
+    m_startBtn->setMinimumHeight(28);
+    connect(m_startBtn, &QPushButton::clicked,
+            this, &MainWindow::startDownload);
+    row->addWidget(m_startBtn);
+    m_root->addLayout(row);
 
-    auto *ffRow = new QHBoxLayout();
-    ffRow->addWidget(new QLabel("ffmpeg路径:"));
-    m_ffmpegPath = new QLineEdit();
-    m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
-    ffRow->addWidget(m_ffmpegPath, 1);
-    auto *ffBtn = new QPushButton("浏览...");
-    m_ffmpegBtn = ffBtn;
-    connect(ffBtn, &QPushButton::clicked,
-            this, [this]() { browseFor(m_ffmpegPath, false); });
-    ffRow->addWidget(ffBtn);
-    m_root->addLayout(ffRow);
+    connect(m_input, &QLineEdit::returnPressed,
+            this, &MainWindow::startDownload);
+}
 
-    connect(m_exePath, &QLineEdit::textChanged,
-            this, [this]() { onPathTextChanged(m_exePath); });
-    connect(m_ffmpegPath, &QLineEdit::textChanged,
-            this, [this]() { onPathTextChanged(m_ffmpegPath); });
+void MainWindow::buildControlRow()
+{
+    // 保存文件名 + 并发限制，同一行。
+    auto *row = new QHBoxLayout();
+    row->addWidget(new QLabel("保存文件名:"));
+    m_saveNameEdit = new QLineEdit();
+    m_saveNameEdit->installEventFilter(this);
+    row->addWidget(m_saveNameEdit, 1);
+    row->addWidget(new QLabel("并发:"));
+    m_queueEnabledBox = new QCheckBox("限制");
+    row->addWidget(m_queueEnabledBox);
+    m_maxConcurrentBox = new QSpinBox();
+    m_maxConcurrentBox->setRange(1, 99);
+    m_maxConcurrentBox->setValue(5);
+    m_maxConcurrentBox->setEnabled(false);
+    row->addWidget(m_maxConcurrentBox);
+    m_root->addLayout(row);
+
+    connect(m_queueEnabledBox, &QCheckBox::toggled,
+            this, &MainWindow::onQueueToggled);
+    connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWindow::onMaxConcurrentChanged);
+
+    // 按钮行：停止 / 生成 / 打开 + 任务数量。
+    auto *btnRow = new QHBoxLayout();
+    m_stopBtn = new QPushButton("停止所有");
+    m_stopBtn->setEnabled(false);
+    connect(m_stopBtn, &QPushButton::clicked,
+            this, &MainWindow::stopDownload);
+    btnRow->addWidget(m_stopBtn);
+    m_genBtn = new QPushButton("生成命令");
+    connect(m_genBtn, &QPushButton::clicked,
+            this, &MainWindow::generatePreview);
+    btnRow->addWidget(m_genBtn);
+    m_openBtn = new QPushButton("打开输出目录");
+    connect(m_openBtn, &QPushButton::clicked,
+            this, &MainWindow::openOutputDir);
+    btnRow->addWidget(m_openBtn);
+    btnRow->addStretch(1);
+    m_taskCountLabel = new QLabel("运行中: 0  等待中: 0");
+    btnRow->addWidget(m_taskCountLabel);
+    m_root->addLayout(btnRow);
 }
 
 QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
@@ -194,12 +227,59 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
     return nullptr;
 }
 
-void MainWindow::buildOptionsUi()
+void MainWindow::buildFoldableSettings()
 {
-    m_tabs = new QTabWidget(this);
+    // 折叠切换按钮
+    m_foldToggle = new QPushButton("▶ 设置");
+    m_foldToggle->setFlat(true);
+    m_foldToggle->setCursor(Qt::PointingHandCursor);
+    m_foldToggle->setStyleSheet(
+        "QPushButton { text-align: left; font-weight: bold; padding: 5px; "
+        "border: none; font-size: 13px; }");
+    connect(m_foldToggle, &QPushButton::clicked,
+            this, &MainWindow::onFoldSettings);
+    m_root->addWidget(m_foldToggle);
+
+    // 可折叠面板
+    m_foldWidget = new QWidget();
+    auto *fold = new QVBoxLayout(m_foldWidget);
+    fold->setContentsMargins(0, 4, 0, 8);
+    fold->setSpacing(6);
+
+    // ---- 程序 / ffmpeg 路径 ----
+    {
+        auto *exeRow = new QHBoxLayout();
+        exeRow->addWidget(new QLabel("程序:"));
+        m_exePath = new QLineEdit();
+        m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
+        exeRow->addWidget(m_exePath, 1);
+        m_exeBtn = new QPushButton("浏览...");
+        connect(m_exeBtn, &QPushButton::clicked,
+                this, &MainWindow::browseExe);
+        exeRow->addWidget(m_exeBtn);
+        fold->addLayout(exeRow);
+
+        auto *ffRow = new QHBoxLayout();
+        ffRow->addWidget(new QLabel("ffmpeg:"));
+        m_ffmpegPath = new QLineEdit();
+        m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
+        ffRow->addWidget(m_ffmpegPath, 1);
+        m_ffmpegBtn = new QPushButton("浏览...");
+        connect(m_ffmpegBtn, &QPushButton::clicked,
+                this, [this]() { browseFor(m_ffmpegPath, false); });
+        ffRow->addWidget(m_ffmpegBtn);
+        fold->addLayout(ffRow);
+
+        connect(m_exePath, &QLineEdit::textChanged,
+                this, [this]() { onPathTextChanged(m_exePath); });
+        connect(m_ffmpegPath, &QLineEdit::textChanged,
+                this, [this]() { onPathTextChanged(m_ffmpegPath); });
+    }
+
+    // ---- 选项标签页 ----
+    m_tabs = new QTabWidget(m_foldWidget);
     const QVector<Category> cats = buildCategories();
     for (const Category &cat : cats) {
-        // 每个分类放进滚动区域：选项少时不留白，选项多时滚动而非撑大窗口。
         auto *scroll = new QScrollArea(m_tabs);
         scroll->setWidgetResizable(true);
         scroll->setFrameShape(QFrame::NoFrame);
@@ -208,26 +288,26 @@ void MainWindow::buildOptionsUi()
         auto *vbox = new QVBoxLayout(page);
         vbox->setSpacing(8);
 
-        // 单列表单用：标签在左、控件在右。
         auto addFormRow = [&](const Opt &o, QFormLayout *form) {
             QWidget *valueWidget = nullptr;
-            QWidget *field = makeOptionWidget(o, &valueWidget);
+            QWidget *field;
+            if (o.flag == "--save-name") {
+                // --save-name 已在顶部显示，这里仅注册供 buildArguments 读取
+                Entry e{o, m_saveNameEdit};
+                m_entries.append(e);
+                connectEntryPreview(e);
+                return;
+            }
+            field = makeOptionWidget(o, &valueWidget);
             auto *label = new QLabel(o.label, page);
             label->setToolTip(o.tooltip);
             form->addRow(label, field);
             Entry e{o, valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
-            if (o.flag == "--save-name") {
-                m_saveNameEdit = qobject_cast<QLineEdit *>(valueWidget);
-                m_saveNameEdit->installEventFilter(this);
-                connect(m_saveNameEdit, &QLineEdit::returnPressed,
-                        this, &MainWindow::startDownload);
-            }
         };
 
         if (cat.twoColumn) {
-            // 开关类参数集中为 3 列紧凑复选框（复选框自带文字）。
             QVector<Opt> bools, others;
             for (const Opt &o : cat.opts)
                 (o.type == Opt::Bool ? bools : others).append(o);
@@ -242,15 +322,12 @@ void MainWindow::buildOptionsUi()
                     QWidget *valueWidget = nullptr;
                     QWidget *field = makeOptionWidget(o, &valueWidget);
                     if (auto *cb = qobject_cast<QCheckBox *>(field))
-                        cb->setText(o.label); // 复选框自带文字，更紧凑
+                        cb->setText(o.label);
                     grid->addWidget(field, row, col);
                     Entry e{o, valueWidget};
                     m_entries.append(e);
                     connectEntryPreview(e);
-                    if (++col >= 3) {   // 每行三个开关
-                        col = 0;
-                        ++row;
-                    }
+                    if (++col >= 3) { col = 0; ++row; }
                 }
                 vbox->addLayout(grid);
             }
@@ -275,10 +352,7 @@ void MainWindow::buildOptionsUi()
                     Entry e{o, valueWidget};
                     m_entries.append(e);
                     connectEntryPreview(e);
-                    if (++col >= 2) {   // 其余参数每行两个，相邻为功能相近项
-                        col = 0;
-                        ++row;
-                    }
+                    if (++col >= 2) { col = 0; ++row; }
                 }
                 vbox->addLayout(grid);
             }
@@ -287,74 +361,17 @@ void MainWindow::buildOptionsUi()
             form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
             form->setLabelAlignment(Qt::AlignLeft);
             form->setHorizontalSpacing(10);
-            bool inputInjected = false;
-            for (const Opt &o : cat.opts) {
-                // 将"链接/文件"输入行置于"保存文件名"之上。
-                if (!inputInjected && o.flag == "--save-name") {
-                    if (!m_input) {
-                        m_input = new QLineEdit(page);
-                        m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
-                        connect(m_input, &QLineEdit::returnPressed,
-                                this, &MainWindow::startDownload);
-                    }
-                    form->addRow(new QLabel("链接/文件:", page), m_input);
-                    inputInjected = true;
-                }
+            for (const Opt &o : cat.opts)
                 addFormRow(o, form);
-            }
             vbox->addLayout(form);
         }
 
-        vbox->addStretch(1); // 内容靠上
+        vbox->addStretch(1);
         scroll->setWidget(page);
         m_tabs->addTab(scroll, cat.name);
     }
 
-    // 附加"下载"选项卡：下载列表与日志左右分栏。
-    {
-        auto *splitter = new QSplitter(Qt::Horizontal);
-
-        auto *taskPanel = new QWidget();
-        auto *taskLayout = new QVBoxLayout(taskPanel);
-        taskLayout->setContentsMargins(0, 0, 0, 0);
-        taskLayout->addWidget(new QLabel("下载列表:"));
-        m_taskList = new QListWidget();
-        m_taskList->setSelectionMode(QAbstractItemView::SingleSelection);
-        m_taskList->setContextMenuPolicy(Qt::CustomContextMenu);
-        m_taskList->addItem("全部");
-        taskLayout->addWidget(m_taskList);
-        connect(m_taskList, &QListWidget::itemClicked,
-                this, &MainWindow::onTaskListClicked);
-        connect(m_taskList, &QWidget::customContextMenuRequested,
-                this, &MainWindow::onTaskListContextMenu);
-
-        // m_taskFilter 内部状态机（隐藏，由下载列表驱动）
-        m_taskFilter = new QComboBox();
-        m_taskFilter->addItem("全部");
-        m_taskFilter->setVisible(false);
-        connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
-                this, &MainWindow::onTaskFilterChanged);
-        taskLayout->addWidget(m_taskFilter);
-
-        splitter->addWidget(taskPanel);
-
-        m_log = new QPlainTextEdit();
-        m_log->setReadOnly(true);
-        m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
-        m_log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-        m_log->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(m_log, &QWidget::customContextMenuRequested,
-                this, &MainWindow::onLogContextMenu);
-        splitter->addWidget(m_log);
-
-        splitter->setStretchFactor(0, 0);
-        splitter->setStretchFactor(1, 1);
-        splitter->setSizes({200, 500});
-
-        m_tabs->addTab(splitter, "下载");
-    }
-
-    // 增强标签显示：无竖线分隔、选中加粗 + 蓝色下划线、透明基线保持对齐。
+    // 标签增强样式
     m_tabs->setStyleSheet(R"(
         QTabBar::tab {
             padding: 10px 20px;
@@ -372,88 +389,86 @@ void MainWindow::buildOptionsUi()
             border-bottom: 3px solid #90c0e0;
         }
     )");
+    m_tabs->setMaximumHeight(280);
+    fold->addWidget(m_tabs);
 
-    // 面板自适应高度，剩余垂直空间全部分给选项卡区域（含下载列表/日志）。
-    m_root->addWidget(m_tabs, 1);
+    // ---- 命令预览 ----
+    {
+        auto *cmdRow = new QHBoxLayout();
+        cmdRow->addWidget(new QLabel("命令预览:"));
+        m_cmdPreview = new QLineEdit();
+        m_cmdPreview->setReadOnly(true);
+        cmdRow->addWidget(m_cmdPreview, 1);
+        m_copyBtn = new QPushButton("复制");
+        connect(m_copyBtn, &QPushButton::clicked,
+                this, &MainWindow::copyCommand);
+        cmdRow->addWidget(m_copyBtn);
+        fold->addLayout(cmdRow);
+    }
+
+    m_foldWidget->setVisible(false); // 默认折叠
+    m_root->addWidget(m_foldWidget);
 }
 
-void MainWindow::buildRunArea()
+void MainWindow::buildMonitorArea()
 {
-    auto *prevRow = new QHBoxLayout();
-    prevRow->addWidget(new QLabel("命令预览:"));
-    m_cmdPreview = new QLineEdit();
-    m_cmdPreview->setReadOnly(true);
-    prevRow->addWidget(m_cmdPreview, 1);
-    auto *copyBtn = new QPushButton("复制");
-    m_copyBtn = copyBtn;
-    connect(copyBtn, &QPushButton::clicked, this, &MainWindow::copyCommand);
-    prevRow->addWidget(copyBtn);
-    m_root->addLayout(prevRow);
+    auto *splitter = new QSplitter(Qt::Horizontal);
 
-    // 并发数量限制（排队模式）：勾选后同时运行的任务数受上限约束，超过则进入等待队列。
-    auto *queueRow = new QHBoxLayout();
-    m_queueEnabledBox = new QCheckBox("限制同时下载数量");
-    m_maxConcurrentBox = new QSpinBox();
-    m_maxConcurrentBox->setRange(1, 99);
-    m_maxConcurrentBox->setValue(5);
-    m_maxConcurrentBox->setEnabled(false); // 勾选后才可编辑
-    queueRow->addWidget(m_queueEnabledBox);
-    queueRow->addWidget(new QLabel("同时最多下载:"));
-    queueRow->addWidget(m_maxConcurrentBox);
-    queueRow->addWidget(new QLabel("个"));
-    queueRow->addStretch(1);
-    m_root->addLayout(queueRow);
-    connect(m_queueEnabledBox, &QCheckBox::toggled,
-            this, &MainWindow::onQueueToggled);
-    connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::onMaxConcurrentChanged);
+    // 左侧：下载列表
+    auto *taskPanel = new QWidget();
+    auto *taskLayout = new QVBoxLayout(taskPanel);
+    taskLayout->setContentsMargins(0, 0, 0, 0);
+    taskLayout->addWidget(new QLabel("下载列表:"));
+    m_taskList = new QListWidget();
+    m_taskList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_taskList->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_taskList->addItem("全部");
+    taskLayout->addWidget(m_taskList);
+    connect(m_taskList, &QListWidget::itemClicked,
+            this, &MainWindow::onTaskListClicked);
+    connect(m_taskList, &QWidget::customContextMenuRequested,
+            this, &MainWindow::onTaskListContextMenu);
 
-    auto *btnRow = new QHBoxLayout();
-    m_startBtn = new QPushButton("开始下载");
-    m_stopBtn = new QPushButton("停止");
-    m_stopBtn->setEnabled(false);
-    auto *genBtn = new QPushButton("生成命令");
-    m_genBtn = genBtn;
-    auto *openBtn = new QPushButton("打开输出目录");
-    m_openBtn = openBtn;
-    connect(m_startBtn, &QPushButton::clicked, this, &MainWindow::startDownload);
-    connect(m_stopBtn, &QPushButton::clicked, this, &MainWindow::stopDownload);
-    connect(genBtn, &QPushButton::clicked, this, &MainWindow::generatePreview);
-    connect(openBtn, &QPushButton::clicked, this, &MainWindow::openOutputDir);
-    btnRow->addWidget(m_startBtn);
-    btnRow->addWidget(m_stopBtn);
-    btnRow->addWidget(genBtn);
-    btnRow->addWidget(openBtn);
-    m_taskCountLabel = new QLabel("正在下载任务数量: 0");
-    btnRow->addWidget(m_taskCountLabel);
-    btnRow->addStretch(1);
-    m_root->addLayout(btnRow);
+    m_taskFilter = new QComboBox();
+    m_taskFilter->addItem("全部");
+    m_taskFilter->setVisible(false);
+    connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onTaskFilterChanged);
+    taskLayout->addWidget(m_taskFilter);
+
+    splitter->addWidget(taskPanel);
+
+    // 右侧：日志
+    m_log = new QPlainTextEdit();
+    m_log->setReadOnly(true);
+    m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
+    m_log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    m_log->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_log, &QWidget::customContextMenuRequested,
+            this, &MainWindow::onLogContextMenu);
+    splitter->addWidget(m_log);
+
+    splitter->setStretchFactor(0, 0);
+    splitter->setStretchFactor(1, 1);
+    splitter->setSizes({200, 500});
+    m_root->addWidget(splitter, 1);
 }
 
 void MainWindow::setupTabOrder()
 {
-    // 按视觉布局设置 Tab 键焦点顺序：顶部路径 -> 选项卡 -> 各选项(链接框在保存文件名之前) -> 命令预览/按钮 -> 日志过滤。
     QVector<QWidget *> chain;
-    chain << m_exePath << m_exeBtn << m_ffmpegPath << m_ffmpegBtn << m_tabs;
+    chain << m_input << m_startBtn
+          << m_saveNameEdit << m_queueEnabledBox << m_maxConcurrentBox
+          << m_stopBtn << m_genBtn << m_openBtn
+          << m_foldToggle
+          << m_exePath << m_exeBtn << m_ffmpegPath << m_ffmpegBtn;
 
-    int saveNameIdx = -1;
-    for (int i = 0; i < m_entries.size(); ++i) {
-        if (m_entries.at(i).opt.flag == "--save-name") {
-            saveNameIdx = i;
-            break;
-        }
-    }
-    for (int i = 0; i < m_entries.size(); ++i) {
-        if (i == saveNameIdx && m_input)   // 链接/文件 置于 保存文件名 之前
-            chain.append(m_input);
-        chain.append(m_entries.at(i).widget);
-    }
-    if (saveNameIdx < 0 && m_input)
-        chain.append(m_input);   // 兜底
+    // 选项标签页内的控件（m_tabs 在 foldWidget 内）
+    chain << m_tabs;
+    for (const Entry &e : m_entries)
+        chain.append(e.widget);
 
-    chain << m_cmdPreview << m_copyBtn << m_queueEnabledBox << m_maxConcurrentBox
-          << m_startBtn << m_stopBtn
-          << m_genBtn << m_openBtn << m_taskFilter;
+    chain << m_cmdPreview << m_copyBtn << m_taskFilter;
 
     for (int i = 0; i + 1 < chain.size(); ++i)
         setTabOrder(chain.at(i), chain.at(i + 1));

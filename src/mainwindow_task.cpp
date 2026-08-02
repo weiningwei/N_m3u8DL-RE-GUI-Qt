@@ -206,6 +206,22 @@ void MainWindow::onMaxConcurrentChanged(int v)
     maybeStartQueued();
 }
 
+void MainWindow::onFoldSettings()
+{
+    const bool expanded = m_foldWidget && m_foldWidget->isVisible();
+    if (expanded) {
+        m_foldWidget->setVisible(false);
+        if (m_foldToggle)
+            m_foldToggle->setText("▶ 设置");
+    } else {
+        m_foldWidget->setVisible(true);
+        if (m_foldToggle)
+            m_foldToggle->setText("▼ 设置");
+    }
+    QSettings s;
+    s.setValue("foldExpanded", !expanded);
+}
+
 void MainWindow::stopDownload()
 {
     // 先清空等待队列，避免随后 processFinished 的自动续传逻辑把等待任务重新拉起。
@@ -305,9 +321,9 @@ void MainWindow::updateTaskCount()
 {
     const int n = m_tasks.size();
     const int w = m_waiting.size();
-    QString text = QString("正在下载任务数量: %1").arg(n);
+    QString text = QString("运行中: %1").arg(n);
     if (w > 0)
-        text += QString("    等待中: %1").arg(w);
+        text += QString("  等待中: %1").arg(w);
     m_taskCountLabel->setText(text);
     m_stopBtn->setEnabled(n > 0 || w > 0);
 }

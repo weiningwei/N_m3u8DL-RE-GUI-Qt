@@ -84,6 +84,7 @@ private slots:
     void maybeStartQueued();
     void onQueueToggled(bool on);
     void onMaxConcurrentChanged(int v);
+    void onFoldSettings();
     void removeTaskByTag(const QString &tag);
     void setTaskListText(const QString &tag, const QString &text);
     void stopTaskByTag(const QString &tag);
@@ -116,9 +117,10 @@ private slots:
 
 private:
     void buildToolbar();
-    void buildInputArea();
-    void buildOptionsUi();
-    void buildRunArea();
+    void buildInputRow();
+    void buildControlRow();
+    void buildFoldableSettings();
+    void buildMonitorArea();
     void setupTabOrder();
 
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
@@ -186,4 +188,6 @@ private:
     QVector<PendingTask> m_waiting; // 等待队列（受并发数量限制时暂存）
     QCheckBox *m_queueEnabledBox = nullptr;  // 「限制同时下载数量」
     QSpinBox *m_maxConcurrentBox = nullptr;  // 「同时最多下载 N 个」
+    QPushButton *m_foldToggle = nullptr;  // 「▶ 设置 / ▼ 设置」
+    QWidget *m_foldWidget = nullptr;      // 可折叠设置面板
 };

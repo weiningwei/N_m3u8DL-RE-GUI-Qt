@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle("N_m3u8DL-RE GUI (Qt)");
-    resize(920, 720);
+    resize(920, 700);
 
     auto *central = new QWidget(this);
     m_root = new QVBoxLayout(central);
@@ -20,9 +20,10 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(central);
 
     buildToolbar();
-    buildInputArea();
-    buildRunArea();
-    buildOptionsUi();
+    buildInputRow();         // 链接 + 开始下载
+    buildControlRow();       // 保存文件名 + 并发 + 按钮 + 计数
+    buildFoldableSettings(); // ▶ 设置（可折叠面板）
+    buildMonitorArea();      // 下载列表 | 日志 (QSplitter)
 
     loadSettings();
     autoDetectExe();
