@@ -237,7 +237,23 @@ void MainWindow::stopDownload()
         return;
     }
     const int n = m_tasks.size();
+
+    // 立即更新按钮反馈
+    if (m_stopBtn) {
+        m_stopBtn->setText("正在停止...");
+        m_stopBtn->setEnabled(false);
+    }
+
+    // 标记所有运行任务为"正在停止"并刷新列表
     for (QProcess *proc : m_tasks) {
+        const QString t = m_taskLabels.value(proc);
+        for (TaskMeta &m : m_taskMetas) {
+            if (m.tag == t) {
+                m.stopping = true;
+                setTaskListText(t, taskDisplay(m));
+                break;
+            }
+        }
         if (proc->state() != QProcess::NotRunning)
             proc->kill();
     }
@@ -290,6 +306,7 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
             if (m.tag == tag) {
                 m.active = false;
                 m.finished = true;
+                m.stopping = false;
                 m.success = (status == QProcess::NormalExit && exitCode == 0);
                 m.exitCode = exitCode;
                 const int idx = m_taskFilter->findData(tag);
@@ -326,7 +343,11 @@ void MainWindow::updateTaskCount()
     if (w > 0)
         text += QString("  等待中: %1").arg(w);
     m_taskCountLabel->setText(text);
-    m_stopBtn->setEnabled(n > 0 || w > 0);
+
+    const bool hasWork = (n > 0 || w > 0);
+    m_stopBtn->setEnabled(hasWork);
+    if (hasWork && m_stopBtn->text() == "正在停止...")
+        m_stopBtn->setText("停止所有");
 }
 
 void MainWindow::appendLog(const QString &text, const QString &tag)
@@ -372,7 +393,9 @@ void MainWindow::onTaskFilterChanged(int /*index*/)
 QString MainWindow::taskDisplay(const TaskMeta &m) const
 {
     QString s = QString("#%1 %2").arg(m.id).arg(m.label);
-    if (m.waiting)
+    if (m.stopping)
+        s += " — 正在停止";
+    else if (m.waiting)
         s += " — 等待中";
     else if (!m.finished)
         s += " — 运行中";
@@ -403,6 +426,15 @@ void MainWindow::onTaskListClicked(QListWidgetItem *item)
 
 void MainWindow::stopTaskByTag(const QString &tag)
 {
+    // 立即更新列表显示
+    for (TaskMeta &m : m_taskMetas) {
+        if (m.tag == tag) {
+            m.stopping = true;
+            setTaskListText(tag, taskDisplay(m));
+            break;
+        }
+    }
+
     for (int i = 0; i < m_tasks.size(); ++i) {
         QProcess *proc = m_tasks.at(i);
         if (m_taskLabels.value(proc) == tag) {

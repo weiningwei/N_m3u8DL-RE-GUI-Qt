@@ -48,6 +48,7 @@ struct TaskMeta {
     bool success = false;   // 是否正常结束
     int exitCode = 0;
     bool waiting = false;   // 是否已加入等待队列但尚未启动
+    bool stopping = false;  // 是否正在被停止
 };
 
 // A download request captured at submission time, so queued tasks keep the
