@@ -276,8 +276,10 @@ void MainWindow::buildOptionsUi()
             Entry e{o, valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
-            if (o.flag == "--save-name")
+            if (o.flag == "--save-name") {
                 m_saveNameEdit = qobject_cast<QLineEdit *>(valueWidget);
+                m_saveNameEdit->installEventFilter(this);
+            }
         };
 
         if (cat.twoColumn) {
@@ -1211,4 +1213,18 @@ void MainWindow::closeEvent(QCloseEvent *event)
     m_partial.clear();
     saveSettings();
     event->accept();
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    // 双击"保存文件名"时，从链接重新派生文件名。
+    if (watched == m_saveNameEdit && event->type() == QEvent::MouseButtonDblClick) {
+        const QString name = deriveName(m_input->text().trimmed());
+        if (!name.isEmpty()) {
+            m_saveNameEdit->setText(name);
+            m_lastAutoName = name;
+        }
+        return true; // 已处理，不再执行默认的双击选中词
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
