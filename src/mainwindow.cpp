@@ -24,6 +24,7 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QTabWidget>
+#include <QScrollArea>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QFileDialog>
@@ -223,7 +224,12 @@ void MainWindow::buildOptionsUi()
     m_tabs = new QTabWidget(this);
     const QVector<Category> cats = buildCategories();
     for (const Category &cat : cats) {
-        auto *page = new QWidget(m_tabs);
+        // 每个分类放进滚动区域：选项少时不留白，选项多时滚动而非撑大窗口。
+        auto *scroll = new QScrollArea(m_tabs);
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+
+        auto *page = new QWidget(scroll);
         auto *form = new QFormLayout(page);
         form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
         form->setLabelAlignment(Qt::AlignLeft);
@@ -240,9 +246,13 @@ void MainWindow::buildOptionsUi()
             m_entries.append(e);
             connectEntryPreview(e);
         }
-        m_tabs->addTab(page, cat.name);
+
+        scroll->setWidget(page);
+        m_tabs->addTab(scroll, cat.name);
     }
-    m_root->addWidget(m_tabs, 1);
+    // 面板按内容高度自适应（去除拉伸），并限制最大高度，多余的垂直空间都给日志区。
+    m_tabs->setMaximumHeight(360);
+    m_root->addWidget(m_tabs);
 }
 
 void MainWindow::buildRunArea()
