@@ -39,6 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     autoFillFromClipboard();
 
     setupTabOrder();
+
+    m_input->setFocus();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
