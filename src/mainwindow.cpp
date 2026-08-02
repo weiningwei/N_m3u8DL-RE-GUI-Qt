@@ -74,6 +74,36 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 启动时若链接框为空且剪贴板是链接/地址，则自动填入。
     autoFillFromClipboard();
+
+    setupTabOrder();
+}
+
+void MainWindow::setupTabOrder()
+{
+    // 按视觉布局设置 Tab 键焦点顺序：顶部路径 -> 选项卡 -> 各选项(链接框在保存文件名之前) -> 命令预览/按钮 -> 日志过滤。
+    QVector<QWidget *> chain;
+    chain << m_exePath << m_exeBtn << m_ffmpegPath << m_ffmpegBtn << m_tabs;
+
+    int saveNameIdx = -1;
+    for (int i = 0; i < m_entries.size(); ++i) {
+        if (m_entries.at(i).opt.flag == "--save-name") {
+            saveNameIdx = i;
+            break;
+        }
+    }
+    for (int i = 0; i < m_entries.size(); ++i) {
+        if (i == saveNameIdx && m_input)   // 链接/文件 置于 保存文件名 之前
+            chain.append(m_input);
+        chain.append(m_entries.at(i).widget);
+    }
+    if (saveNameIdx < 0 && m_input)
+        chain.append(m_input);   // 兜底
+
+    chain << m_cmdPreview << m_copyBtn << m_startBtn << m_stopBtn
+          << m_genBtn << m_openBtn << m_taskFilter;
+
+    for (int i = 0; i + 1 < chain.size(); ++i)
+        setTabOrder(chain.at(i), chain.at(i + 1));
 }
 
 // ------------------------------------------------------------------
@@ -137,6 +167,7 @@ void MainWindow::buildInputArea()
     m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
     exeRow->addWidget(m_exePath, 1);
     auto *exeBtn = new QPushButton("浏览...");
+    m_exeBtn = exeBtn;
     connect(exeBtn, &QPushButton::clicked, this, &MainWindow::browseExe);
     exeRow->addWidget(exeBtn);
     m_root->addLayout(exeRow);
@@ -147,6 +178,7 @@ void MainWindow::buildInputArea()
     m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
     ffRow->addWidget(m_ffmpegPath, 1);
     auto *ffBtn = new QPushButton("浏览...");
+    m_ffmpegBtn = ffBtn;
     connect(ffBtn, &QPushButton::clicked,
             this, [this]() { browseFor(m_ffmpegPath, false); });
     ffRow->addWidget(ffBtn);
@@ -342,6 +374,7 @@ void MainWindow::buildRunArea()
     m_cmdPreview->setReadOnly(true);
     prevRow->addWidget(m_cmdPreview, 1);
     auto *copyBtn = new QPushButton("复制");
+    m_copyBtn = copyBtn;
     connect(copyBtn, &QPushButton::clicked, this, &MainWindow::copyCommand);
     prevRow->addWidget(copyBtn);
     m_root->addLayout(prevRow);
@@ -351,7 +384,9 @@ void MainWindow::buildRunArea()
     m_stopBtn = new QPushButton("停止");
     m_stopBtn->setEnabled(false);
     auto *genBtn = new QPushButton("生成命令");
+    m_genBtn = genBtn;
     auto *openBtn = new QPushButton("打开输出目录");
+    m_openBtn = openBtn;
     connect(m_startBtn, &QPushButton::clicked, this, &MainWindow::startDownload);
     connect(m_stopBtn, &QPushButton::clicked, this, &MainWindow::stopDownload);
     connect(genBtn, &QPushButton::clicked, this, &MainWindow::generatePreview);

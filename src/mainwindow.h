@@ -82,6 +82,7 @@ private:
     void buildInputArea();
     void buildOptionsUi();
     void buildRunArea();
+    void setupTabOrder();
 
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
     void connectEntryPreview(const Entry &e);
@@ -123,6 +124,11 @@ private:
     QPushButton *m_stopBtn = nullptr;
     QLabel *m_taskCountLabel = nullptr;
     QComboBox *m_taskFilter = nullptr;
+    QPushButton *m_exeBtn = nullptr;
+    QPushButton *m_ffmpegBtn = nullptr;
+    QPushButton *m_copyBtn = nullptr;
+    QPushButton *m_genBtn = nullptr;
+    QPushButton *m_openBtn = nullptr;
 
     QAction *m_alwaysOnTopAction = nullptr;
     QVector<QAction *> m_themeActions;
