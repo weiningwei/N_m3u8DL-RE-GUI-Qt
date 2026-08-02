@@ -5,6 +5,11 @@
 
 int main(int argc, char *argv[])
 {
+    // 高分屏 / 高 DPI 支持：按真实比例缩放
+    // （PassThrough 让 125%/150% 等分数缩放精确呈现，避免四舍五入导致模糊或错位）。
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
     QApplication app(argc, argv);
     QApplication::setApplicationName("N_m3u8DL-RE GUI");
     QApplication::setOrganizationName("N_m3u8DL-RE-GUI-Qt");
