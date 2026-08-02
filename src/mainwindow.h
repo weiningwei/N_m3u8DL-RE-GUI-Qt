@@ -11,6 +11,8 @@ class QPushButton;
 class QTabWidget;
 class QVBoxLayout;
 class QCloseEvent;
+class QAction;
+class QActionGroup;
 class StringListWidget;
 
 #include <QProcess>
@@ -45,6 +47,10 @@ private slots:
     void openOutputDir();
     void about();
 
+    void onThemeActionTriggered(QAction *action);
+    void setTheme(const QString &name);
+    void onAlwaysOnTopToggled(bool on);
+
 private:
     void buildToolbar();
     void buildInputArea();
@@ -54,6 +60,7 @@ private:
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
     void connectEntryPreview(const Entry &e);
     void appendLog(const QString &text);
+    void applyUiSettings();
 
     QStringList buildArguments();
     QString previewCommand(const QString &program, const QStringList &args);
@@ -69,6 +76,10 @@ private:
     QLineEdit *m_cmdPreview = nullptr;
     QPushButton *m_startBtn = nullptr;
     QPushButton *m_stopBtn = nullptr;
+
+    QAction *m_alwaysOnTopAction = nullptr;
+    QVector<QAction *> m_themeActions;
+    QString m_currentTheme = "跟随系统";
 
     QVBoxLayout *m_root = nullptr;
     QProcess *m_process = nullptr;

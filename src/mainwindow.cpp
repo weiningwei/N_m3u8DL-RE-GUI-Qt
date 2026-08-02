@@ -2,7 +2,17 @@
 #include "stringlistwidget.h"
 #include "options.h"
 
+#include <QApplication>
+#include <QActionGroup>
+#include <QStyleHints>
+#include <QToolBar>
+#include <QToolButton>
+#include <QMenu>
 #include <QVBoxLayout>
+
+#ifdef Q_OS_WIN
+#  include <windows.h>
+#endif
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QLabel>
@@ -70,8 +80,42 @@ void MainWindow::buildToolbar()
     auto *fileMenu = menuBar()->addMenu("文件");
     fileMenu->addAction("退出", this, &QWidget::close);
 
+    auto *settingsMenu = menuBar()->addMenu("设置");
+
+    auto *themeMenu = settingsMenu->addMenu("主题");
+    for (const QString &name : {QStringLiteral("跟随系统"),
+                                QStringLiteral("浅色"),
+                                QStringLiteral("暗色")}) {
+        QAction *a = themeMenu->addAction(name);
+        a->setCheckable(true);
+        m_themeActions.append(a);
+        connect(a, &QAction::triggered,
+                this, [this, a]() { onThemeActionTriggered(a); });
+    }
+
+    m_alwaysOnTopAction = settingsMenu->addAction("窗口置顶");
+    m_alwaysOnTopAction->setCheckable(true);
+    connect(m_alwaysOnTopAction, &QAction::toggled,
+            this, &MainWindow::onAlwaysOnTopToggled);
+
     auto *helpMenu = menuBar()->addMenu("帮助");
     helpMenu->addAction("关于", this, &MainWindow::about);
+
+    // 主页面工具栏：直接提供主题切换与窗口置顶，无需进入二级菜单。
+    auto *toolBar = addToolBar("主工具栏");
+    toolBar->setMovable(false);
+
+    auto *themeBtn = new QToolButton(toolBar);
+    themeBtn->setText("主题");
+    themeBtn->setPopupMode(QToolButton::InstantPopup);
+    auto *themePopup = new QMenu(themeBtn);
+    for (QAction *a : m_themeActions)
+        themePopup->addAction(a);
+    themeBtn->setMenu(themePopup);
+    toolBar->addWidget(themeBtn);
+
+    toolBar->addSeparator();
+    toolBar->addAction(m_alwaysOnTopAction);
 }
 
 void MainWindow::buildInputArea()
@@ -473,6 +517,53 @@ void MainWindow::about()
         "版本 1.0.0");
 }
 
+void MainWindow::onThemeActionTriggered(QAction *action)
+{
+    QString target = action->text();
+    // 再次点击已选中的项 -> 取消，回到"跟随系统"。
+    if (target == m_currentTheme)
+        target = "跟随系统";
+    setTheme(target);
+}
+
+void MainWindow::setTheme(const QString &name)
+{
+    m_currentTheme = name;
+
+    Qt::ColorScheme scheme = Qt::ColorScheme::Unknown; // 跟随系统
+    if (name == "浅色")
+        scheme = Qt::ColorScheme::Light;
+    else if (name == "暗色")
+        scheme = Qt::ColorScheme::Dark;
+    QApplication::styleHints()->setColorScheme(scheme);
+
+    for (QAction *a : m_themeActions) {
+        a->blockSignals(true);
+        a->setChecked(a->text() == name);
+        a->blockSignals(false);
+    }
+
+    QSettings s;
+    s.setValue("theme", name);
+}
+
+void MainWindow::onAlwaysOnTopToggled(bool on)
+{
+    // 直接用 Win32 调整窗口 Z 序，避免在已显示窗口上调用 setWindowFlag
+    // 触发原生窗口重建（表现为界面闪烁）。
+#ifdef Q_OS_WIN
+    const HWND hwnd = reinterpret_cast<HWND>(winId());
+    SetWindowPos(hwnd, on ? HWND_TOPMOST : HWND_NOTOPMOST,
+                 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#else
+    setWindowFlag(Qt::WindowStaysOnTopHint, on);
+    show();
+#endif
+
+    QSettings s;
+    s.setValue("alwaysOnTop", on);
+}
+
 // ------------------------------------------------------------------
 // Persistence
 // ------------------------------------------------------------------
@@ -539,6 +630,19 @@ void MainWindow::loadSettings()
             break;
         }
     }
+    applyUiSettings();
+}
+
+void MainWindow::applyUiSettings()
+{
+    QSettings s;
+    setTheme(s.value("theme", "跟随系统").toString());
+
+    const bool onTop = s.value("alwaysOnTop", false).toBool();
+    m_alwaysOnTopAction->blockSignals(true);
+    m_alwaysOnTopAction->setChecked(onTop);
+    m_alwaysOnTopAction->blockSignals(false);
+    setWindowFlag(Qt::WindowStaysOnTopHint, onTop);
 }
 
 void MainWindow::autoDetectExe()
