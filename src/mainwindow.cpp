@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     buildMonitorArea();      // 下载列表 | 日志 (QSplitter)
 
     loadSettings();
+    refreshPresetList();
     autoDetectExe();
     autoDetectFfmpeg();
     generatePreview();

@@ -378,6 +378,33 @@ void MainWindow::buildFoldableSettings()
                 this, [this]() { onPathTextChanged(m_ffmpegPath); });
     }
 
+    // ====== 配置预设 ======
+    {
+        auto *presetRow = new QHBoxLayout();
+        presetRow->addWidget(new QLabel("预设:"));
+        m_presetCombo = new QComboBox();
+        m_presetCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        m_presetCombo->addItem("(默认)");
+        presetRow->addWidget(m_presetCombo, 1);
+        connect(m_presetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                this, &MainWindow::onPresetSelected);
+
+        m_presetNameEdit = new QLineEdit();
+        m_presetNameEdit->setPlaceholderText("预设名称");
+        m_presetNameEdit->setMaximumWidth(120);
+        presetRow->addWidget(m_presetNameEdit);
+
+        auto *saveBtn = new QPushButton("保存预设");
+        connect(saveBtn, &QPushButton::clicked, this, &MainWindow::onSavePreset);
+        presetRow->addWidget(saveBtn);
+
+        auto *delBtn = new QPushButton("删除");
+        connect(delBtn, &QPushButton::clicked, this, &MainWindow::onDeletePreset);
+        presetRow->addWidget(delBtn);
+
+        m_root->addLayout(presetRow);
+    }
+
     // 命令预览
     {
         auto *cmdRow = new QHBoxLayout();

@@ -263,6 +263,8 @@ void MainWindow::loadSettings()
         if (m_terminalModeBox)
             m_terminalModeBox->setChecked(termMode);
     }
+    // 恢复活动预设
+    m_currentPreset = s.value("currentPreset", "").toString();
     // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
