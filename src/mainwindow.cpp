@@ -672,8 +672,10 @@ void MainWindow::saveSettings()
     QSettings s;
     s.setValue("exePath", m_exePath->text());
     s.setValue("ffmpegPath", m_ffmpegPath->text());
-    s.setValue("input", m_input->text());
+    // 注意：链接/文件 与 保存文件名 不持久化
     for (const Entry &e : m_entries) {
+        if (e.opt.flag == "--save-name")
+            continue;
         const QString key = "opt/" + e.opt.flag;
         switch (e.opt.type) {
         case Opt::Bool:
@@ -702,8 +704,10 @@ void MainWindow::loadSettings()
     QSettings s;
     m_exePath->setText(s.value("exePath", "").toString());
     m_ffmpegPath->setText(s.value("ffmpegPath", "").toString());
-    m_input->setText(s.value("input", "").toString());
+    // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复
     for (const Entry &e : m_entries) {
+        if (e.opt.flag == "--save-name")
+            continue;
         const QVariant v = s.value("opt/" + e.opt.flag);
         if (!v.isValid())
             continue;
