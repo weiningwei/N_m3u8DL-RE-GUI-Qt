@@ -364,7 +364,9 @@ QStringList MainWindow::buildArguments()
         case Opt::PathFile:
         case Opt::PathDir: {
             auto *le = qobject_cast<QLineEdit *>(e.widget);
-            const QString v = le ? le->text().trimmed() : QString();
+            QString v = le ? le->text().trimmed() : QString();
+            if (v.isEmpty() && !o.defaultSubdir.isEmpty())
+                v = QDir(QApplication::applicationDirPath()).filePath(o.defaultSubdir);
             if (!v.isEmpty()) {
                 args.append(o.flag);
                 args.append(v);
@@ -374,7 +376,7 @@ QStringList MainWindow::buildArguments()
         case Opt::Int: {
             auto *sp = qobject_cast<QSpinBox *>(e.widget);
             const int v = sp ? sp->value() : o.intDefault;
-            if (v != o.intDefault) {
+            if (v != o.intDefault || o.emitDefault) {
                 args.append(o.flag);
                 args.append(QString::number(v));
             }

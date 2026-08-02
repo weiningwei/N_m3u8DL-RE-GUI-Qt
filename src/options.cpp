@@ -11,15 +11,17 @@ QVector<Category> buildCategories()
         Category c;
         c.name = "基本设置";
         c.opts = {
-            {Opt::PathDir, "--tmp-dir", "临时文件目录", "设置临时文件存储目录", "", {}, 0, false},
-            {Opt::PathDir, "--save-dir", "输出目录", "设置输出目录", "", {}, 0, false},
+            {Opt::PathDir, "--tmp-dir", "临时文件目录",
+             "设置临时文件存储目录 (默认 <程序目录>/temp)", "temp", {}, 0, false, false, "temp"},
+            {Opt::PathDir, "--save-dir", "输出目录",
+             "设置输出目录 (默认 <程序目录>/download)", "download", {}, 0, false, false, "download"},
             {Opt::String, "--save-name", "保存文件名", "设置保存文件名", "", {}, 0, false},
             {Opt::String, "--save-pattern", "命名模板",
              "命名模板, 变量: <SaveName> <Id> <Codecs> <Language> <Resolution> "
              "<Bandwidth> <MediaType> <Channels> <FrameRate> <VideoRange> <GroupId> <Ext>",
              "", {}, 0, false},
             {Opt::Int, "--thread-count", "下载线程数",
-             "设置下载线程数 (0 = 自动, 使用CPU线程数)", "本机CPU线程数", {}, 0, false},
+             "设置下载线程数 (默认 8)", "", {}, 8, false, true, ""},
             {Opt::Int, "--download-retry-count", "分片重试次数",
              "每个分片下载异常时的重试次数", "3", {}, 3, false},
             {Opt::Int, "--http-request-timeout", "HTTP超时(秒)",

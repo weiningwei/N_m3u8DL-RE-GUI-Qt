@@ -25,6 +25,8 @@ struct Opt {
     QStringList choices;  // for Combo
     int intDefault = 0;   // default for Int (omit flag when equal)
     bool boolDefault = false; // default checked state for Bool
+    bool emitDefault = false; // Int: 即使等于默认值也下发该参数
+    QString defaultSubdir;    // Path: 文本框为空时回退到 <程序目录>/defaultSubdir
 };
 
 struct Category {
