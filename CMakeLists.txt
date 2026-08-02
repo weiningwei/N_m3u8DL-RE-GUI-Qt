@@ -30,11 +30,21 @@ add_executable(N_m3u8DL_RE_GUI_Qt
     src/mainwindow_clipboard.cpp
     src/mainwindow_settings.cpp
     src/mainwindow_paths.cpp
+    resources/app_icon.qrc
+    resources/app_icon.png
 )
 
 target_include_directories(N_m3u8DL_RE_GUI_Qt PRIVATE include)
 
 target_link_libraries(N_m3u8DL_RE_GUI_Qt PRIVATE Qt6::Widgets)
+
+# 拷贝资源文件到构建目录，确保运行时可访问
+add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/app_icon.png"
+        "$<TARGET_FILE_DIR:N_m3u8DL_RE_GUI_Qt>/app_icon.png"
+    COMMENT "Copying app_icon.png to build directory"
+)
 
 # Ensure UTF-8 source/literal handling with the MinGW/Clang toolchain.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QSettings>
 
 int main(int argc, char *argv[])
@@ -14,6 +15,12 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName("N_m3u8DL-RE GUI");
     QApplication::setOrganizationName("N_m3u8DL-RE-GUI-Qt");
     QApplication::setApplicationVersion("1.0.0");
+
+    // 设置应用图标（窗口标题栏、任务栏、消息框等）
+    QIcon appIcon(":/app_icon.png");
+    if (!appIcon.isNull()) {
+        app.setWindowIcon(appIcon);
+    }
 
     // 便携模式：配置文件保存在程序目录下的 config.ini，见 portableSettings()
 
