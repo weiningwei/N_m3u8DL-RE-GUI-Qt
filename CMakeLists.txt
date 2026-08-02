@@ -100,6 +100,24 @@ if(WIN32)
             "${DEPLOY_DIR}/imageformats"
         COMMENT "Deploying imageformat plugins"
     )
+
+    # Icon engines (SVG icon support)
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/iconengines"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+            "${QT_PREFIX}/plugins/iconengines"
+            "${DEPLOY_DIR}/iconengines"
+        COMMENT "Deploying iconengine plugins"
+    )
+
+    # Generic plugins
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/generic"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+            "${QT_PREFIX}/plugins/generic"
+            "${DEPLOY_DIR}/generic"
+        COMMENT "Deploying generic plugins"
+    )
 endif()
 
 # Ensure UTF-8 source/literal handling with the MinGW/Clang toolchain.
