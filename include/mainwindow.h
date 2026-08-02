@@ -100,6 +100,7 @@ private:
 
     QString findInStandardLocations(const QString &exeName) const;
     void refreshPathHint(QLineEdit *edit, const QString &exeName);
+    void markDetected(QLineEdit *edit);
     void onPathTextChanged(QLineEdit *edit);
     QString relativeDisplay(const QString &absPath) const;
     QString effectiveAbsolute(QLineEdit *edit) const;

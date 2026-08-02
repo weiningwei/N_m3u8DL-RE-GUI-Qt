@@ -93,6 +93,20 @@ void MainWindow::refreshPathHint(QLineEdit *edit, const QString &exeName)
     }
 }
 
+void MainWindow::markDetected(QLineEdit *edit)
+{
+    // 只要标准位置能检测到 exe/ffmpeg，就标记“已自动检测”，不再要求字段必须为空。
+    const QString abs = effectiveAbsolute(edit);
+    edit->setToolTip("已自动检测到，可手动修改");
+    edit->setStyleSheet("QLineEdit { border: 2px solid #2e7d32; border-radius: 3px; }");
+    if (!abs.isEmpty()) {
+        edit->setProperty("absPath", abs);
+        const QString rel = relativeDisplay(abs);
+        if (edit->text() != rel)
+            edit->setText(rel);
+    }
+}
+
 void MainWindow::onPathTextChanged(QLineEdit *edit)
 {
     // 当内容已不再是自动检测到的相对路径时，去掉绿色提示框。
@@ -138,20 +152,24 @@ QString MainWindow::resolvedFfmpegPath() const
 
 void MainWindow::autoDetectExe()
 {
-    if (m_exePath->text().isEmpty()) {
-        const QString found = findInStandardLocations("N_m3u8DL-RE.exe");
-        if (!found.isEmpty())
-            m_exePath->setText(found);
+    const QString found = findInStandardLocations("N_m3u8DL-RE.exe");
+    if (found.isEmpty()) {
+        refreshPathHint(m_exePath, "N_m3u8DL-RE.exe");
+        return;
     }
-    refreshPathHint(m_exePath, "N_m3u8DL-RE.exe");
+    if (m_exePath->text().isEmpty())
+        m_exePath->setText(found);
+    markDetected(m_exePath);
 }
 
 void MainWindow::autoDetectFfmpeg()
 {
-    if (m_ffmpegPath->text().isEmpty()) {
-        const QString found = findInStandardLocations("ffmpeg.exe");
-        if (!found.isEmpty())
-            m_ffmpegPath->setText(found);
+    const QString found = findInStandardLocations("ffmpeg.exe");
+    if (found.isEmpty()) {
+        refreshPathHint(m_ffmpegPath, "ffmpeg.exe");
+        return;
     }
-    refreshPathHint(m_ffmpegPath, "ffmpeg.exe");
+    if (m_ffmpegPath->text().isEmpty())
+        m_ffmpegPath->setText(found);
+    markDetected(m_ffmpegPath);
 }
