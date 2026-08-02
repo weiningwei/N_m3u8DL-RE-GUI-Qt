@@ -15,8 +15,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("N_m3u8DL-RE-GUI-Qt");
     QApplication::setApplicationVersion("1.0.0");
 
-    // 使用 ini 配置文件而非注册表
-    QSettings::setDefaultFormat(QSettings::IniFormat);
+    // 便携模式：配置文件保存在程序目录下的 config.ini，见 portableSettings()
 
     // 清理旧版注册表配置（曾使用 NativeFormat 存储）
     {

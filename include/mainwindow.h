@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QHash>
+#include <QSettings>
 
 #include "options.h"
 
@@ -191,3 +192,6 @@ private:
     QPushButton *m_foldToggle = nullptr;  // 「▶ 设置 / ▼ 设置」
     QWidget *m_foldWidget = nullptr;      // 可折叠设置面板
 };
+
+// 便携模式：所有设置保存在程序目录下的 config.ini
+QSettings portableSettings();

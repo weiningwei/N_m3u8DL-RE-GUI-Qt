@@ -86,12 +86,12 @@ void MainWindow::resetSettings()
     if (r != QMessageBox::Yes)
         return;
 
-    QSettings().clear();
+    portableSettings().clear();
     resetWidgetsToDefaults();
     autoDetectExe();
     autoDetectFfmpeg();
     generatePreview();
-    QSettings().sync();
+    portableSettings().sync();
 }
 
 void MainWindow::resetWidgetsToDefaults()
@@ -187,7 +187,7 @@ void MainWindow::setTheme(const QString &name)
         a->blockSignals(false);
     }
 
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("theme", name);
 }
 
@@ -204,7 +204,7 @@ void MainWindow::onAlwaysOnTopToggled(bool on)
     show();
 #endif
 
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("alwaysOnTop", on);
 }
 
@@ -214,7 +214,7 @@ void MainWindow::onAlwaysOnTopToggled(bool on)
 
 void MainWindow::saveSettings()
 {
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("exePath", m_exePath->text());
     s.setValue("ffmpegPath", m_ffmpegPath->text());
     s.setValue("queueEnabled", m_queueEnabledBox ? m_queueEnabledBox->isChecked() : false);
@@ -249,7 +249,7 @@ void MainWindow::saveSettings()
 
 void MainWindow::loadSettings()
 {
-    QSettings s;
+    auto s = portableSettings();
     m_exePath->setText(s.value("exePath", "").toString());
     m_ffmpegPath->setText(s.value("ffmpegPath", "").toString());
     // 并发数量限制（排队模式）配置。
@@ -305,7 +305,7 @@ void MainWindow::loadSettings()
 
 void MainWindow::applyUiSettings()
 {
-    QSettings s;
+    auto s = portableSettings();
     setTheme(s.value("theme", "跟随系统").toString());
 
     const bool onTop = s.value("alwaysOnTop", false).toBool();

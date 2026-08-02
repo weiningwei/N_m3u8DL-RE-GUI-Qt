@@ -7,6 +7,7 @@
 #include <QEvent>
 #include <QLineEdit>
 #include <QProcess>
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -72,4 +73,11 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         return true; // 已处理，不再执行默认的双击选中词
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+// 便携模式：所有设置保存在程序目录下的 config.ini
+QSettings portableSettings()
+{
+    return QSettings(QGuiApplication::applicationDirPath() + "/config.ini",
+                     QSettings::IniFormat);
 }

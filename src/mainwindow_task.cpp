@@ -190,7 +190,7 @@ void MainWindow::onQueueToggled(bool on)
 {
     if (m_maxConcurrentBox)
         m_maxConcurrentBox->setEnabled(on);
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("queueEnabled", on);
     // 关闭限制 -> 立即放开所有等待任务（maybeStartQueued 在禁用时不受上限约束）。
     if (!on)
@@ -200,7 +200,7 @@ void MainWindow::onQueueToggled(bool on)
 
 void MainWindow::onMaxConcurrentChanged(int v)
 {
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("maxConcurrent", v);
     // 调大上限后若有空位，立即填补等待队列。
     maybeStartQueued();
@@ -218,7 +218,7 @@ void MainWindow::onFoldSettings()
         if (m_foldToggle)
             m_foldToggle->setText("▼ 设置");
     }
-    QSettings s;
+    auto s = portableSettings();
     s.setValue("foldExpanded", !expanded);
 }
 
