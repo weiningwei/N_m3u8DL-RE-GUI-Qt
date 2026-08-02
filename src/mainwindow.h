@@ -104,9 +104,16 @@ private:
     QString resolvedExePath() const;
     QString resolvedFfmpegPath() const;
 
+    void onInputChanged();
+    void autoFillFromClipboard();
+    static QString deriveName(const QString &input);
+    static bool looksLikeUrl(const QString &text);
+
     QLineEdit *m_exePath = nullptr;
     QLineEdit *m_ffmpegPath = nullptr;
     QLineEdit *m_input = nullptr;
+    QLineEdit *m_saveNameEdit = nullptr;  // 保存文件名输入框（--save-name）
+    QString m_lastAutoName;               // 最近一次自动派生的文件名，用于避免覆盖手动输入
     QTabWidget *m_tabs = nullptr;
     QPlainTextEdit *m_log = nullptr;
     QLineEdit *m_cmdPreview = nullptr;

@@ -32,6 +32,7 @@
 #include <QMessageBox>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QRegularExpression>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QSettings>
@@ -65,7 +66,11 @@ MainWindow::MainWindow(QWidget *parent)
     generatePreview();
 
     connect(m_input, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
+    connect(m_input, &QLineEdit::textChanged, this, &MainWindow::onInputChanged);
     connect(m_exePath, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
+
+    // 启动时若链接框为空且剪贴板是链接/地址，则自动填入。
+    autoFillFromClipboard();
 }
 
 // ------------------------------------------------------------------
@@ -236,6 +241,8 @@ void MainWindow::buildOptionsUi()
             Entry e{o, valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
+            if (o.flag == "--save-name")
+                m_saveNameEdit = qobject_cast<QLineEdit *>(valueWidget);
         };
 
         if (cat.twoColumn) {
@@ -703,6 +710,94 @@ void MainWindow::refreshLogView()
 void MainWindow::onTaskFilterChanged(int /*index*/)
 {
     refreshLogView();
+}
+
+// ------------------------------------------------------------------
+// 链接框自动填充与文件名派生
+// ------------------------------------------------------------------
+
+void MainWindow::onInputChanged()
+{
+    const QString input = m_input->text().trimmed();
+    if (!m_saveNameEdit)
+        return;
+
+    if (input.isEmpty()) {
+        // 链接清空时也清掉自动派生的文件名（仅当仍是自动值）。
+        if (m_saveNameEdit->text() == m_lastAutoName) {
+            m_saveNameEdit->clear();
+            m_lastAutoName.clear();
+        }
+        return;
+    }
+
+    const QString name = deriveName(input);
+    if (name.isEmpty())
+        return;
+    // 仅当用户未手动修改文件名时才自动更新，避免覆盖已有输入。
+    if (m_saveNameEdit->text().isEmpty() || m_saveNameEdit->text() == m_lastAutoName) {
+        m_saveNameEdit->setText(name);
+        m_lastAutoName = name;
+    }
+}
+
+void MainWindow::autoFillFromClipboard()
+{
+    if (!m_input->text().isEmpty())
+        return;
+    const QString clip = QGuiApplication::clipboard()->text();
+    if (looksLikeUrl(clip))
+        m_input->setText(clip.trimmed());
+}
+
+QString MainWindow::deriveName(const QString &input)
+{
+    QString s = input.trimmed();
+    if (s.isEmpty())
+        return QString();
+
+    // 去掉协议头
+    const int scheme = s.indexOf("://");
+    if (scheme >= 0)
+        s = s.mid(scheme + 3);
+    // 去掉查询串与片段
+    int q = s.indexOf('?');
+    if (q >= 0) s = s.left(q);
+    int h = s.indexOf('#');
+    if (h >= 0) s = s.left(h);
+    // 取最后一段路径
+    int slash = s.lastIndexOf('/');
+    if (slash >= 0) s = s.mid(slash + 1);
+    int bs = s.lastIndexOf('\\');
+    if (bs >= 0) s = s.mid(bs + 1);
+    // 去掉扩展名（保存文件名由工具自动补扩展名）
+    const int dot = s.lastIndexOf('.');
+    if (dot > 0) s = s.left(dot);
+    // 清理文件名非法字符
+    static const QRegularExpression bad("[<>:\"/\\\\|?*]");
+    s.replace(bad, "_");
+    s = s.trimmed();
+    return s;
+}
+
+bool MainWindow::looksLikeUrl(const QString &text)
+{
+    const QString t = text.trimmed();
+    if (t.isEmpty())
+        return false;
+    if (t.contains("://"))
+        return true;
+    if (t.startsWith("magnet:", Qt::CaseInsensitive))
+        return true;
+    if (t.startsWith("rtsp:", Qt::CaseInsensitive)
+            || t.startsWith("rtmp:", Qt::CaseInsensitive))
+        return true;
+    if (t.startsWith('/'))
+        return true;
+    // Windows 盘符路径，如 C:\ 或 C:/
+    if (t.size() > 2 && t.at(1) == ':' && (t.at(2) == '\\' || t.at(2) == '/'))
+        return true;
+    return false;
 }
 
 // ------------------------------------------------------------------
