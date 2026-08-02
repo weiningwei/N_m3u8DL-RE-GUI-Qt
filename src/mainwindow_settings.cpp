@@ -131,7 +131,7 @@ void MainWindow::resetWidgetsToDefaults()
     // 折叠设置面板
     if (m_foldWidget) {
         m_foldWidget->setVisible(false);
-        if (m_foldToggle) m_foldToggle->setText("▶ 设置");
+        if (m_foldToggle) m_foldToggle->setText("▶ 高级");
     }
     setTheme("跟随系统");
     m_alwaysOnTopAction->blockSignals(true);
@@ -266,7 +266,7 @@ void MainWindow::loadSettings()
         if (m_foldWidget) {
             m_foldWidget->setVisible(fold);
             if (m_foldToggle)
-                m_foldToggle->setText(fold ? "▼ 设置" : "▶ 设置");
+                m_foldToggle->setText(fold ? "▼ 高级" : "▶ 高级");
         }
     }
     // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复

@@ -229,55 +229,8 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
 
 void MainWindow::buildFoldableSettings()
 {
-    // 折叠切换按钮
-    m_foldToggle = new QPushButton("▶ 设置");
-    m_foldToggle->setFlat(true);
-    m_foldToggle->setCursor(Qt::PointingHandCursor);
-    m_foldToggle->setStyleSheet(
-        "QPushButton { text-align: left; font-weight: bold; padding: 5px; "
-        "border: none; font-size: 13px; }");
-    connect(m_foldToggle, &QPushButton::clicked,
-            this, &MainWindow::onFoldSettings);
-    m_root->addWidget(m_foldToggle);
-
-    // 可折叠面板
-    m_foldWidget = new QWidget();
-    auto *fold = new QVBoxLayout(m_foldWidget);
-    fold->setContentsMargins(0, 4, 0, 8);
-    fold->setSpacing(6);
-
-    // ---- 程序 / ffmpeg 路径 ----
-    {
-        auto *exeRow = new QHBoxLayout();
-        exeRow->addWidget(new QLabel("程序:"));
-        m_exePath = new QLineEdit();
-        m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
-        exeRow->addWidget(m_exePath, 1);
-        m_exeBtn = new QPushButton("浏览...");
-        connect(m_exeBtn, &QPushButton::clicked,
-                this, &MainWindow::browseExe);
-        exeRow->addWidget(m_exeBtn);
-        fold->addLayout(exeRow);
-
-        auto *ffRow = new QHBoxLayout();
-        ffRow->addWidget(new QLabel("ffmpeg:"));
-        m_ffmpegPath = new QLineEdit();
-        m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
-        ffRow->addWidget(m_ffmpegPath, 1);
-        m_ffmpegBtn = new QPushButton("浏览...");
-        connect(m_ffmpegBtn, &QPushButton::clicked,
-                this, [this]() { browseFor(m_ffmpegPath, false); });
-        ffRow->addWidget(m_ffmpegBtn);
-        fold->addLayout(ffRow);
-
-        connect(m_exePath, &QLineEdit::textChanged,
-                this, [this]() { onPathTextChanged(m_exePath); });
-        connect(m_ffmpegPath, &QLineEdit::textChanged,
-                this, [this]() { onPathTextChanged(m_ffmpegPath); });
-    }
-
-    // ---- 选项标签页 ----
-    m_tabs = new QTabWidget(m_foldWidget);
+    // ====== 选项标签页：始终可见 ======
+    m_tabs = new QTabWidget(this);
     const QVector<Category> cats = buildCategories();
     for (const Category &cat : cats) {
         auto *scroll = new QScrollArea(m_tabs);
@@ -292,7 +245,6 @@ void MainWindow::buildFoldableSettings()
             QWidget *valueWidget = nullptr;
             QWidget *field;
             if (o.flag == "--save-name") {
-                // --save-name 已在顶部显示，这里仅注册供 buildArguments 读取
                 Entry e{o, m_saveNameEdit};
                 m_entries.append(e);
                 connectEntryPreview(e);
@@ -371,7 +323,6 @@ void MainWindow::buildFoldableSettings()
         m_tabs->addTab(scroll, cat.name);
     }
 
-    // 标签增强样式
     m_tabs->setStyleSheet(R"(
         QTabBar::tab {
             padding: 10px 20px;
@@ -389,10 +340,56 @@ void MainWindow::buildFoldableSettings()
             border-bottom: 3px solid #90c0e0;
         }
     )");
-    m_tabs->setMaximumHeight(280);
-    fold->addWidget(m_tabs);
+    m_tabs->setMaximumHeight(260);
+    m_root->addWidget(m_tabs);
 
-    // ---- 命令预览 ----
+    // ====== 可折叠"高级"面板：路径 + 命令预览 ======
+    m_foldToggle = new QPushButton("▶ 高级");
+    m_foldToggle->setFlat(true);
+    m_foldToggle->setCursor(Qt::PointingHandCursor);
+    m_foldToggle->setStyleSheet(
+        "QPushButton { text-align: left; font-weight: bold; padding: 5px; "
+        "border: none; font-size: 13px; }");
+    connect(m_foldToggle, &QPushButton::clicked,
+            this, &MainWindow::onFoldSettings);
+    m_root->addWidget(m_foldToggle);
+
+    m_foldWidget = new QWidget();
+    auto *fold = new QVBoxLayout(m_foldWidget);
+    fold->setContentsMargins(0, 4, 0, 8);
+    fold->setSpacing(6);
+
+    // 程序 / ffmpeg 路径
+    {
+        auto *exeRow = new QHBoxLayout();
+        exeRow->addWidget(new QLabel("程序:"));
+        m_exePath = new QLineEdit();
+        m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
+        exeRow->addWidget(m_exePath, 1);
+        m_exeBtn = new QPushButton("浏览...");
+        connect(m_exeBtn, &QPushButton::clicked,
+                this, &MainWindow::browseExe);
+        exeRow->addWidget(m_exeBtn);
+        fold->addLayout(exeRow);
+
+        auto *ffRow = new QHBoxLayout();
+        ffRow->addWidget(new QLabel("ffmpeg:"));
+        m_ffmpegPath = new QLineEdit();
+        m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
+        ffRow->addWidget(m_ffmpegPath, 1);
+        m_ffmpegBtn = new QPushButton("浏览...");
+        connect(m_ffmpegBtn, &QPushButton::clicked,
+                this, [this]() { browseFor(m_ffmpegPath, false); });
+        ffRow->addWidget(m_ffmpegBtn);
+        fold->addLayout(ffRow);
+
+        connect(m_exePath, &QLineEdit::textChanged,
+                this, [this]() { onPathTextChanged(m_exePath); });
+        connect(m_ffmpegPath, &QLineEdit::textChanged,
+                this, [this]() { onPathTextChanged(m_ffmpegPath); });
+    }
+
+    // 命令预览
     {
         auto *cmdRow = new QHBoxLayout();
         cmdRow->addWidget(new QLabel("命令预览:"));
@@ -406,7 +403,7 @@ void MainWindow::buildFoldableSettings()
         fold->addLayout(cmdRow);
     }
 
-    m_foldWidget->setVisible(false); // 默认折叠
+    m_foldWidget->setVisible(false);
     m_root->addWidget(m_foldWidget);
 }
 

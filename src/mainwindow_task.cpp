@@ -212,11 +212,11 @@ void MainWindow::onFoldSettings()
     if (expanded) {
         m_foldWidget->setVisible(false);
         if (m_foldToggle)
-            m_foldToggle->setText("▶ 设置");
+            m_foldToggle->setText("▶ 高级");
     } else {
         m_foldWidget->setVisible(true);
         if (m_foldToggle)
-            m_foldToggle->setText("▼ 设置");
+            m_foldToggle->setText("▼ 高级");
     }
     auto s = portableSettings();
     s.setValue("foldExpanded", !expanded);
