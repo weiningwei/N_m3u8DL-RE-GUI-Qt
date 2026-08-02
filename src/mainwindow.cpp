@@ -148,14 +148,6 @@ void MainWindow::buildInputArea()
             this, [this]() { onPathTextChanged(m_exePath); });
     connect(m_ffmpegPath, &QLineEdit::textChanged,
             this, [this]() { onPathTextChanged(m_ffmpegPath); });
-
-    auto *inRow = new QHBoxLayout();
-    inRow->addWidget(new QLabel("链接/文件:"));
-    m_input = new QLineEdit();
-    m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
-    inRow->addWidget(m_input, 1);
-    m_root->addLayout(inRow);
-    m_root->addSpacing(4);
 }
 
 QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
@@ -307,8 +299,19 @@ void MainWindow::buildOptionsUi()
             form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
             form->setLabelAlignment(Qt::AlignLeft);
             form->setHorizontalSpacing(10);
-            for (const Opt &o : cat.opts)
+            bool inputInjected = false;
+            for (const Opt &o : cat.opts) {
+                // 将"链接/文件"输入行置于"保存文件名"之上。
+                if (!inputInjected && o.flag == "--save-name") {
+                    if (!m_input) {
+                        m_input = new QLineEdit(page);
+                        m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
+                    }
+                    form->addRow(new QLabel("链接/文件:", page), m_input);
+                    inputInjected = true;
+                }
                 addFormRow(o, form);
+            }
             vbox->addLayout(form);
         }
 
