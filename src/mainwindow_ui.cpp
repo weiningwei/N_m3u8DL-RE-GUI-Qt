@@ -354,13 +354,15 @@ void MainWindow::buildOptionsUi()
         m_tabs->addTab(splitter, "下载");
     }
 
-    // 增强标签显示：更大的区域、选中加粗 + 蓝色下划线、悬停反馈。
+    // 增强标签显示：无竖线分隔、选中加粗 + 蓝色下划线、透明基线保持对齐。
     m_tabs->setStyleSheet(R"(
         QTabBar::tab {
             padding: 10px 20px;
             min-width: 60px;
             margin-right: 3px;
             font-size: 13px;
+            border: none;
+            border-bottom: 2px solid transparent;
         }
         QTabBar::tab:selected {
             font-weight: bold;
