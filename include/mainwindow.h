@@ -41,6 +41,7 @@ struct TaskMeta {
     int id = 0;
     QString tag;        // 与 LogLine::tag 对应
     QString label;      // 下拉中显示的简短描述
+    QString input;      // 原始链接/文件，用于右键复制
     bool active = true;
     bool finished = false;  // 是否已结束
     bool success = false;   // 是否正常结束
@@ -85,6 +86,11 @@ private slots:
     void onMaxConcurrentChanged(int v);
     void removeTaskByTag(const QString &tag);
     void setTaskListText(const QString &tag, const QString &text);
+    void stopTaskByTag(const QString &tag);
+    void cancelWaitingByTag(const QString &tag);
+    void clearLog();
+    void copyAllLog();
+    void copyVisibleLog();
 
     void readProcessOutput();
     void processFinished(int exitCode, QProcess::ExitStatus status);
@@ -103,6 +109,8 @@ private slots:
 
     void onTaskFilterChanged(int index);
     void onTaskListClicked(QListWidgetItem *item);
+    void onTaskListContextMenu(const QPoint &pos);
+    void onLogContextMenu(const QPoint &pos);
     QString currentFilterTag() const;
     void refreshLogView();
 

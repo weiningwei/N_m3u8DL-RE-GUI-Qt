@@ -45,6 +45,7 @@
 #include <QCloseEvent>
 #include <QMenuBar>
 #include <QScrollBar>
+#include <QSplitter>
 #include <QOverload>
 
 // ------------------------------------------------------------------
@@ -308,9 +309,70 @@ void MainWindow::buildOptionsUi()
         scroll->setWidget(page);
         m_tabs->addTab(scroll, cat.name);
     }
-    // 面板按内容高度自适应（去除拉伸），并限制最大高度，多余的垂直空间都给日志区。
-    m_tabs->setMaximumHeight(360);
-    m_root->addWidget(m_tabs);
+
+    // 附加"下载"选项卡：下载列表与日志左右分栏。
+    {
+        auto *splitter = new QSplitter(Qt::Horizontal);
+
+        auto *taskPanel = new QWidget();
+        auto *taskLayout = new QVBoxLayout(taskPanel);
+        taskLayout->setContentsMargins(0, 0, 0, 0);
+        taskLayout->addWidget(new QLabel("下载列表:"));
+        m_taskList = new QListWidget();
+        m_taskList->setSelectionMode(QAbstractItemView::SingleSelection);
+        m_taskList->setContextMenuPolicy(Qt::CustomContextMenu);
+        m_taskList->addItem("全部");
+        taskLayout->addWidget(m_taskList);
+        connect(m_taskList, &QListWidget::itemClicked,
+                this, &MainWindow::onTaskListClicked);
+        connect(m_taskList, &QWidget::customContextMenuRequested,
+                this, &MainWindow::onTaskListContextMenu);
+
+        // m_taskFilter 内部状态机（隐藏，由下载列表驱动）
+        m_taskFilter = new QComboBox();
+        m_taskFilter->addItem("全部");
+        m_taskFilter->setVisible(false);
+        connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                this, &MainWindow::onTaskFilterChanged);
+        taskLayout->addWidget(m_taskFilter);
+
+        splitter->addWidget(taskPanel);
+
+        m_log = new QPlainTextEdit();
+        m_log->setReadOnly(true);
+        m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
+        m_log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        m_log->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(m_log, &QWidget::customContextMenuRequested,
+                this, &MainWindow::onLogContextMenu);
+        splitter->addWidget(m_log);
+
+        splitter->setStretchFactor(0, 0);
+        splitter->setStretchFactor(1, 1);
+        splitter->setSizes({200, 500});
+
+        m_tabs->addTab(splitter, "下载");
+    }
+
+    // 增强标签显示：更大的区域、选中加粗 + 蓝色下划线、悬停反馈。
+    m_tabs->setStyleSheet(R"(
+        QTabBar::tab {
+            padding: 10px 20px;
+            min-width: 60px;
+            margin-right: 3px;
+            font-size: 13px;
+        }
+        QTabBar::tab:selected {
+            font-weight: bold;
+            border-bottom: 3px solid #0078d4;
+        }
+        QTabBar::tab:hover:!selected {
+            border-bottom: 3px solid #90c0e0;
+        }
+    )");
+
+    // 面板自适应高度，剩余垂直空间全部分给选项卡区域（含下载列表/日志）。
+    m_root->addWidget(m_tabs, 1);
 }
 
 void MainWindow::buildRunArea()
@@ -364,29 +426,6 @@ void MainWindow::buildRunArea()
     btnRow->addWidget(m_taskCountLabel);
     btnRow->addStretch(1);
     m_root->addLayout(btnRow);
-
-    // 下载列表：记录已添加的任务，点击某一项即按该任务筛选日志。
-    m_root->addWidget(new QLabel("下载列表:"));
-    m_taskList = new QListWidget();
-    m_taskList->setMaximumHeight(140);
-    m_taskList->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_taskList->addItem("全部");   // UserRole 空串 -> 不过滤
-    m_root->addWidget(m_taskList);
-    connect(m_taskList, &QListWidget::itemClicked,
-            this, &MainWindow::onTaskListClicked);
-
-    // m_taskFilter 作为日志过滤的内部状态机保留（隐藏，由下载列表驱动）。
-    m_taskFilter = new QComboBox();
-    m_taskFilter->addItem("全部");
-    m_taskFilter->setVisible(false);
-    connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onTaskFilterChanged);
-
-    m_log = new QPlainTextEdit();
-    m_log->setReadOnly(true);
-    m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
-    m_log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    m_root->addWidget(m_log, 2);
 }
 
 void MainWindow::setupTabOrder()

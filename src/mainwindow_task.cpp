@@ -84,7 +84,7 @@ void MainWindow::startDownload()
     pt.id = id;
     pt.tag = tag;
     pt.label = shortInput;
-    pt.meta = TaskMeta{id, tag, shortInput, true};
+    pt.meta = TaskMeta{id, tag, shortInput, input, true};
     pt.meta.waiting = true;
 
     // 登记任务到下拉列表（保持"全部"为首项）与下载列表（先显示"等待中"）。
@@ -378,4 +378,108 @@ void MainWindow::onTaskListClicked(QListWidgetItem *item)
             m_taskFilter->setCurrentIndex(idx);
     }
     // 触发 onTaskFilterChanged -> refreshLogView 按任务筛选日志
+}
+
+// ------------------------------------------------------------------
+// 右键菜单
+// ------------------------------------------------------------------
+
+void MainWindow::stopTaskByTag(const QString &tag)
+{
+    for (int i = 0; i < m_tasks.size(); ++i) {
+        QProcess *proc = m_tasks.at(i);
+        if (m_taskLabels.value(proc) == tag) {
+            if (proc->state() != QProcess::NotRunning)
+                proc->kill();
+            appendLog("已停止任务。", tag);
+            return;
+        }
+    }
+}
+
+void MainWindow::cancelWaitingByTag(const QString &tag)
+{
+    int idx = -1;
+    for (int i = 0; i < m_waiting.size(); ++i) {
+        if (m_waiting.at(i).tag == tag) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0)
+        return;
+    m_waiting.removeAt(idx);
+    removeTaskByTag(tag);
+    appendLog("已取消等待。");
+    updateTaskCount();
+}
+
+void MainWindow::clearLog()
+{
+    m_logLines.clear();
+    m_log->clear();
+    m_taskFilter->setCurrentIndex(0);  // 切回"全部"后日志为空
+}
+
+void MainWindow::copyAllLog()
+{
+    QString out;
+    for (const LogLine &l : m_logLines)
+        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+    QApplication::clipboard()->setText(out);
+}
+
+void MainWindow::copyVisibleLog()
+{
+    const QString sel = currentFilterTag();
+    QString out;
+    for (const LogLine &l : m_logLines) {
+        if (!sel.isEmpty() && l.tag != sel)
+            continue;
+        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+    }
+    QApplication::clipboard()->setText(out);
+}
+
+void MainWindow::onTaskListContextMenu(const QPoint &pos)
+{
+    QListWidgetItem *item = m_taskList->itemAt(pos);
+    if (!item)
+        return;
+    const QString tag = item->data(Qt::UserRole).toString();
+    if (tag.isEmpty())
+        return; // "全部"
+
+    TaskMeta *meta = nullptr;
+    for (TaskMeta &m : m_taskMetas) {
+        if (m.tag == tag) {
+            meta = &m;
+            break;
+        }
+    }
+    if (!meta)
+        return;
+
+    QMenu menu;
+    if (meta->waiting) {
+        menu.addAction("取消等待", this, [this, tag]() { cancelWaitingByTag(tag); });
+    } else if (!meta->finished) {
+        menu.addAction("停止此任务", this, [this, tag]() { stopTaskByTag(tag); });
+    }
+    menu.addSeparator();
+    if (!meta->input.isEmpty())
+        menu.addAction("复制链接", [meta]() { QApplication::clipboard()->setText(meta->input); });
+    menu.addAction("复制标签", [tag]() { QApplication::clipboard()->setText(tag); });
+    menu.exec(m_taskList->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::onLogContextMenu(const QPoint &pos)
+{
+    QMenu *menu = m_log->createStandardContextMenu();
+    menu->addSeparator();
+    menu->addAction("清除日志", this, [this]() { clearLog(); });
+    menu->addAction("复制全部日志", this, [this]() { copyAllLog(); });
+    menu->addAction("复制可见日志", this, [this]() { copyVisibleLog(); });
+    menu->exec(m_log->viewport()->mapToGlobal(pos));
+    delete menu;
 }

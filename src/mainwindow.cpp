@@ -21,8 +21,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     buildToolbar();
     buildInputArea();
-    buildOptionsUi();
     buildRunArea();
+    buildOptionsUi();
 
     loadSettings();
     autoDetectExe();
