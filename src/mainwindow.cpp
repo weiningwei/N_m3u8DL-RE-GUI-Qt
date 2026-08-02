@@ -279,6 +279,8 @@ void MainWindow::buildOptionsUi()
             if (o.flag == "--save-name") {
                 m_saveNameEdit = qobject_cast<QLineEdit *>(valueWidget);
                 m_saveNameEdit->installEventFilter(this);
+                connect(m_saveNameEdit, &QLineEdit::returnPressed,
+                        this, &MainWindow::startDownload);
             }
         };
 
@@ -350,6 +352,8 @@ void MainWindow::buildOptionsUi()
                     if (!m_input) {
                         m_input = new QLineEdit(page);
                         m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
+                        connect(m_input, &QLineEdit::returnPressed,
+                                this, &MainWindow::startDownload);
                     }
                     form->addRow(new QLabel("链接/文件:", page), m_input);
                     inputInjected = true;
