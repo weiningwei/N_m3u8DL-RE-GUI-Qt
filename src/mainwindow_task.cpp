@@ -124,15 +124,13 @@ void MainWindow::startTaskNow(const PendingTask &pt)
             this, &MainWindow::processFinished);
 
     if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
-        // 独立终端：通过 cmd /c start /wait 在新窗口中运行，QProcess 追踪 cmd 生命周期
-        QStringList cmdArgs;
-        cmdArgs << "/c" << "start" << "\"N_m3u8DL-RE\""
-                << "/wait" << "/D"
-                << QDir::toNativeSeparators(QFileInfo(pt.program).absolutePath())
-                << QDir::toNativeSeparators(pt.program);
+        // 独立终端：通过 cmd /c start /wait 在新窗口中运行
+        // 构建单条命令字符串，由 cmd 自己处理引号，避免多参数拆分时的转义问题
+        QString cmdStr = "start \"N_m3u8DL-RE\" /wait \""
+                       + QDir::toNativeSeparators(pt.program) + "\"";
         for (const QString &a : pt.args)
-            cmdArgs << a;
-        proc->start("cmd.exe", cmdArgs);
+            cmdStr += " \"" + a + "\"";
+        proc->start("cmd.exe", {"/c", cmdStr});
     } else {
         proc->start(pt.program, pt.args);
     }
