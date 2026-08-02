@@ -47,6 +47,8 @@ private slots:
     void openOutputDir();
     void about();
     void requestExit();
+    void resetSettings();
+    void resetWidgetsToDefaults();
 
     void onThemeActionTriggered(QAction *action);
     void setTheme(const QString &name);

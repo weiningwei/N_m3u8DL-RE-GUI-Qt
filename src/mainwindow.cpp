@@ -101,6 +101,10 @@ void MainWindow::buildToolbar()
     connect(m_alwaysOnTopAction, &QAction::toggled,
             this, &MainWindow::onAlwaysOnTopToggled);
 
+    auto *resetAction = new QAction("恢复默认配置");
+    connect(resetAction, &QAction::triggered, this, &MainWindow::resetSettings);
+    settingsMenu->addAction(resetAction);
+
     auto *helpMenu = menuBar()->addMenu("帮助");
     helpMenu->addAction("关于", this, &MainWindow::about);
 
@@ -119,6 +123,7 @@ void MainWindow::buildToolbar()
 
     toolBar->addSeparator();
     toolBar->addAction(m_alwaysOnTopAction);
+    toolBar->addAction(resetAction);
 }
 
 void MainWindow::buildInputArea()
@@ -535,6 +540,59 @@ void MainWindow::openOutputDir()
     if (dir.isEmpty())
         dir = QDir::currentPath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void MainWindow::resetSettings()
+{
+    const QMessageBox::StandardButton r = QMessageBox::question(
+        this, "恢复默认配置",
+        "确定要清空所有已保存的设置并恢复默认配置吗？",
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (r != QMessageBox::Yes)
+        return;
+
+    QSettings().clear();
+    resetWidgetsToDefaults();
+    autoDetectExe();
+    autoDetectFfmpeg();
+    generatePreview();
+    QSettings().sync();
+}
+
+void MainWindow::resetWidgetsToDefaults()
+{
+    for (const Entry &e : m_entries) {
+        switch (e.opt.type) {
+        case Opt::Bool:
+            qobject_cast<QCheckBox *>(e.widget)->setChecked(e.opt.boolDefault);
+            break;
+        case Opt::String:
+        case Opt::PathFile:
+        case Opt::PathDir:
+            qobject_cast<QLineEdit *>(e.widget)->clear();
+            break;
+        case Opt::Int:
+            qobject_cast<QSpinBox *>(e.widget)->setValue(e.opt.intDefault);
+            break;
+        case Opt::Combo: {
+            auto *cb = qobject_cast<QComboBox *>(e.widget);
+            const int i = cb->findText(e.opt.def);
+            cb->setCurrentIndex(i >= 0 ? i : 0);
+            break;
+        }
+        case Opt::List:
+            qobject_cast<StringListWidget *>(e.widget)->clear();
+            break;
+        }
+    }
+
+    m_exePath->clear();
+    m_ffmpegPath->clear();
+    setTheme("跟随系统");
+    m_alwaysOnTopAction->blockSignals(true);
+    m_alwaysOnTopAction->setChecked(false);
+    m_alwaysOnTopAction->blockSignals(false);
+    setWindowFlag(Qt::WindowStaysOnTopHint, false);
 }
 
 void MainWindow::about()
