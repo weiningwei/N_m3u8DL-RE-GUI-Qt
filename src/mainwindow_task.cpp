@@ -356,9 +356,12 @@ void MainWindow::appendLog(const QString &text, const QString &tag)
     // 当前显示"全部"或正筛选该任务时，直接追加；否则仅记录、切换筛选时再重绘。
     if (m_taskFilter == nullptr || m_taskFilter->currentIndex() <= 0
             || tag == currentFilterTag()) {
-        m_log->appendPlainText((tag.isEmpty() ? QString() : (tag + " ")) + text);
+        // 仅当用户在底部附近时才自动滚动，避免查看历史日志时被拉回底部
         QScrollBar *bar = m_log->verticalScrollBar();
-        if (bar)
+        const bool atBottom = bar
+            && (bar->value() >= bar->maximum() - bar->pageStep() - 20);
+        m_log->appendPlainText((tag.isEmpty() ? QString() : (tag + " ")) + text);
+        if (atBottom && bar)
             bar->setValue(bar->maximum());
     }
 }
