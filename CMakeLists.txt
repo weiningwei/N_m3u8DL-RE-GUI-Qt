@@ -56,6 +56,52 @@ add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
     COMMENT "Copying app_icon.png to build directory"
 )
 
+# 自动部署 Qt DLL 到构建目录，编译后可直接运行
+if(WIN32)
+    get_target_property(QT_QMAKE_EXE Qt6::qmake IMPORTED_LOCATION)
+    cmake_path(GET QT_QMAKE_EXE PARENT_PATH QT_BIN_DIR)
+    cmake_path(GET QT_BIN_DIR PARENT_PATH QT_PREFIX)
+
+    set(DEPLOY_DIR "$<TARGET_FILE_DIR:N_m3u8DL_RE_GUI_Qt>")
+
+    # Core DLLs (linked libraries)
+    foreach(DLL Qt6Core Qt6Gui Qt6Widgets Qt6Network Qt6Svg)
+        add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${QT_PREFIX}/bin/${DLL}.dll"
+                "${DEPLOY_DIR}/${DLL}.dll"
+            COMMENT "Deploying ${DLL}.dll"
+        )
+    endforeach()
+
+    # Platform plugin (required for any Qt GUI app on Windows)
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/platforms"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_PREFIX}/plugins/platforms/qwindows.dll"
+            "${DEPLOY_DIR}/platforms/qwindows.dll"
+        COMMENT "Deploying platform plugin"
+    )
+
+    # Styles plugin
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/styles"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QT_PREFIX}/plugins/styles/qmodernwindowsstyle.dll"
+            "${DEPLOY_DIR}/styles/qmodernwindowsstyle.dll"
+        COMMENT "Deploying styles plugin"
+    )
+
+    # Image formats (needed for icon rendering)
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEPLOY_DIR}/imageformats"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+            "${QT_PREFIX}/plugins/imageformats"
+            "${DEPLOY_DIR}/imageformats"
+        COMMENT "Deploying imageformat plugins"
+    )
+endif()
+
 # Ensure UTF-8 source/literal handling with the MinGW/Clang toolchain.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(N_m3u8DL_RE_GUI_Qt PRIVATE -finput-charset=utf-8)
