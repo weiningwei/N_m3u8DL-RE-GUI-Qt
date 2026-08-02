@@ -234,48 +234,81 @@ void MainWindow::buildOptionsUi()
         auto *vbox = new QVBoxLayout(page);
         vbox->setSpacing(8);
 
-        // 注册单个选项并加入目标布局（表单或网格）。
-        auto addOpt = [&](const Opt &o, QLayout *target, int row, int col) {
+        // 单列表单用：标签在左、控件在右。
+        auto addFormRow = [&](const Opt &o, QFormLayout *form) {
             QWidget *valueWidget = nullptr;
             QWidget *field = makeOptionWidget(o, &valueWidget);
             auto *label = new QLabel(o.label, page);
             label->setToolTip(o.tooltip);
-            if (cat.twoColumn) {
-                // 两列网格：标签在上、控件在下，功能相近的选项左右并排。
-                auto *cell = new QWidget();
-                auto *cellLay = new QVBoxLayout(cell);
-                cellLay->setContentsMargins(0, 0, 0, 0);
-                cellLay->addWidget(label);
-                cellLay->addWidget(field);
-                static_cast<QGridLayout *>(target)->addWidget(cell, row, col);
-            } else {
-                static_cast<QFormLayout *>(target)->addRow(label, field);
-            }
+            form->addRow(label, field);
             Entry e{o, valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
         };
 
         if (cat.twoColumn) {
-            auto *grid = new QGridLayout();
-            grid->setHorizontalSpacing(16);
-            grid->setVerticalSpacing(8);
-            int row = 0, col = 0;
-            for (const Opt &o : cat.opts) {
-                addOpt(o, grid, row, col);
-                if (++col >= 2) {   // 每行两个，相邻选项即为功能相近项
-                    col = 0;
-                    ++row;
+            // 开关类参数集中为 3 列紧凑复选框（复选框自带文字）。
+            QVector<Opt> bools, others;
+            for (const Opt &o : cat.opts)
+                (o.type == Opt::Bool ? bools : others).append(o);
+
+            if (!bools.isEmpty()) {
+                vbox->addWidget(new QLabel("开关选项", page));
+                auto *grid = new QGridLayout();
+                grid->setHorizontalSpacing(12);
+                grid->setVerticalSpacing(4);
+                int row = 0, col = 0;
+                for (const Opt &o : bools) {
+                    QWidget *valueWidget = nullptr;
+                    QWidget *field = makeOptionWidget(o, &valueWidget);
+                    if (auto *cb = qobject_cast<QCheckBox *>(field))
+                        cb->setText(o.label); // 复选框自带文字，更紧凑
+                    grid->addWidget(field, row, col);
+                    Entry e{o, valueWidget};
+                    m_entries.append(e);
+                    connectEntryPreview(e);
+                    if (++col >= 3) {   // 每行三个开关
+                        col = 0;
+                        ++row;
+                    }
                 }
+                vbox->addLayout(grid);
             }
-            vbox->addLayout(grid);
+
+            if (!others.isEmpty()) {
+                vbox->addWidget(new QLabel("其他参数", page));
+                auto *grid = new QGridLayout();
+                grid->setHorizontalSpacing(16);
+                grid->setVerticalSpacing(8);
+                int row = 0, col = 0;
+                for (const Opt &o : others) {
+                    QWidget *valueWidget = nullptr;
+                    QWidget *field = makeOptionWidget(o, &valueWidget);
+                    auto *cell = new QWidget();
+                    auto *cellLay = new QVBoxLayout(cell);
+                    cellLay->setContentsMargins(0, 0, 0, 0);
+                    auto *label = new QLabel(o.label, page);
+                    label->setToolTip(o.tooltip);
+                    cellLay->addWidget(label);
+                    cellLay->addWidget(field);
+                    grid->addWidget(cell, row, col);
+                    Entry e{o, valueWidget};
+                    m_entries.append(e);
+                    connectEntryPreview(e);
+                    if (++col >= 2) {   // 其余参数每行两个，相邻为功能相近项
+                        col = 0;
+                        ++row;
+                    }
+                }
+                vbox->addLayout(grid);
+            }
         } else {
             auto *form = new QFormLayout();
             form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
             form->setLabelAlignment(Qt::AlignLeft);
             form->setHorizontalSpacing(10);
             for (const Opt &o : cat.opts)
-                addOpt(o, form, 0, 0);
+                addFormRow(o, form);
             vbox->addLayout(form);
         }
 
