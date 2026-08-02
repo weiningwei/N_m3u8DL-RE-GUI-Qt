@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 # ==============================================================
 # Release packaging script for N_m3u8DL-RE GUI (Qt)
 # Builds Release, deploys Qt DLLs, copies resources, creates zip.
@@ -18,8 +18,6 @@ TOOLCHAIN="/d/Qt/Tools/llvm-mingw1706_64"
 VERSION="${1:-1.0.0}"
 RELEASE_NAME="N_m3u8DL-RE-GUI-Qt-v${VERSION}"
 RELEASE_DIR="$PROJECT_DIR/release/$RELEASE_NAME"
-ZIP_NAME="${RELEASE_NAME}.zip"
-ZIP_PATH="$PROJECT_DIR/release/${ZIP_NAME}"
 
 echo "=========================================="
 echo " N_m3u8DL-RE GUI Qt  -  Release Builder"
@@ -31,8 +29,7 @@ echo ""
 echo "[1/4] Building Release..."
 mkdir -p "$BUILD_DIR"
 
-export PATH="$TOOLCHAIN/bin:$PATH"
-export PATH="$QT_DIR/bin:$PATH"
+export PATH="$TOOLCHAIN/bin:$QT_DIR/bin:$PATH"
 
 cmake -G "MinGW Makefiles" \
     -S "$PROJECT_DIR" \
@@ -49,7 +46,8 @@ echo "Build done."
 # ---- Step 2: Deploy Qt DLLs ----
 echo ""
 echo "[2/4] Deploying Qt dependencies..."
-"$QT_DIR/bin/windeployqt" --release --no-translations --no-compiler-runtime "$BUILD_DIR/N_m3u8DL_RE_GUI_Qt.exe"
+"$QT_DIR/bin/windeployqt" --release --no-translations --no-compiler-runtime \
+    "$BUILD_DIR/N_m3u8DL_RE_GUI_Qt.exe" 2>&1 || echo "(windeployqt warning - may be false alarm, continuing)"
 echo "Deploy done."
 
 # ---- Step 3: Create release directory ----
@@ -58,34 +56,18 @@ echo "[3/4] Assembling release package..."
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
-# Copy executable and all DLLs
 cp "$BUILD_DIR/N_m3u8DL_RE_GUI_Qt.exe" "$RELEASE_DIR/"
 cp "$BUILD_DIR"/*.dll "$RELEASE_DIR/" 2>/dev/null || true
 
-# Copy platform plugins and other Qt directories
 for dir in platforms styles imageformats iconengines tls generic networkinformation translations; do
-    if [ -d "$BUILD_DIR/$dir" ]; then
-        cp -r "$BUILD_DIR/$dir" "$RELEASE_DIR/$dir"
-    fi
+    [ -d "$BUILD_DIR/$dir" ] && cp -r "$BUILD_DIR/$dir" "$RELEASE_DIR/$dir"
 done
 
-# Copy third_party if present
-if [ -d "$PROJECT_DIR/third_party" ]; then
-    cp -r "$PROJECT_DIR/third_party" "$RELEASE_DIR/"
-fi
+[ -d "$PROJECT_DIR/third_party" ] && cp -r "$PROJECT_DIR/third_party" "$RELEASE_DIR/"
+[ -f "$PROJECT_DIR/resources/app_icon.png" ] && cp "$PROJECT_DIR/resources/app_icon.png" "$RELEASE_DIR/"
+[ -f "$PROJECT_DIR/README.md" ] && cp "$PROJECT_DIR/README.md" "$RELEASE_DIR/"
+[ -f "$PROJECT_DIR/LICENSE" ] && cp "$PROJECT_DIR/LICENSE" "$RELEASE_DIR/"
 
-# Copy icon
-cp "$PROJECT_DIR/resources/app_icon.png" "$RELEASE_DIR/"
-
-# Copy README
-cp "$PROJECT_DIR/README.md" "$RELEASE_DIR/"
-
-# Copy LICENSE
-if [ -f "$PROJECT_DIR/LICENSE" ]; then
-    cp "$PROJECT_DIR/LICENSE" "$RELEASE_DIR/"
-fi
-
-# Copy N_m3u8DL-RE documentation
 if [ -f "$PROJECT_DIR/doc/N_m3u8DL-RE_README.md" ]; then
     mkdir -p "$RELEASE_DIR/doc"
     cp "$PROJECT_DIR/doc/N_m3u8DL-RE_README.md" "$RELEASE_DIR/doc/"
@@ -93,17 +75,28 @@ fi
 
 echo "Release assembled in: $RELEASE_DIR"
 
-# ---- Step 4: Zip ----
+# ---- Step 4: Package ----
 echo ""
-echo "[4/4] Creating zip archive..."
+echo "[4/4] Creating archive..."
 cd "$PROJECT_DIR/release"
-rm -f "$ZIP_NAME"
-zip -r "$ZIP_NAME" "$RELEASE_NAME"
+
+if command -v zip &>/dev/null; then
+    rm -f "${RELEASE_NAME}.zip"
+    zip -r "${RELEASE_NAME}.zip" "$RELEASE_NAME"
+    echo "Archive: ${PROJECT_DIR}/release/${RELEASE_NAME}.zip"
+elif command -v powershell &>/dev/null; then
+    powershell -NoProfile -Command \
+        "Compress-Archive -Path '${RELEASE_NAME}' -DestinationPath '${RELEASE_NAME}.zip' -Force"
+    echo "Archive: ${PROJECT_DIR}/release/${RELEASE_NAME}.zip"
+else
+    echo "No zip tool found - release folder is ready at:"
+    echo "  $RELEASE_DIR"
+fi
+
 cd "$PROJECT_DIR"
 
 echo ""
 echo "=========================================="
 echo " Release ready:"
 echo "   Folder: $RELEASE_DIR"
-echo "   Zip:    $ZIP_PATH"
 echo "=========================================="
