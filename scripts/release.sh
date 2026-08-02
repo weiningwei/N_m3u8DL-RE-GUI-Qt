@@ -14,7 +14,6 @@ QT_VER="6.11.1"
 QT_KIT="llvm-mingw_64"
 QT_DIR="/d/Qt/${QT_VER}/${QT_KIT}"
 TOOLCHAIN="/d/Qt/Tools/llvm-mingw1706_64"
-NINJA="/d/Qt/Tools/Ninja/ninja.exe"
 
 VERSION="${1:-1.0.0}"
 RELEASE_NAME="N_m3u8DL-RE-GUI-Qt-v${VERSION}"
@@ -35,7 +34,7 @@ mkdir -p "$BUILD_DIR"
 export PATH="$TOOLCHAIN/bin:$PATH"
 export PATH="$QT_DIR/bin:$PATH"
 
-cmake -GNinja \
+cmake -G "MinGW Makefiles" \
     -S "$PROJECT_DIR" \
     -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
