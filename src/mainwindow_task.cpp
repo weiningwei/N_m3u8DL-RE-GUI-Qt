@@ -124,13 +124,15 @@ void MainWindow::startTaskNow(const PendingTask &pt)
             this, &MainWindow::processFinished);
 
     if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
-        // 独立终端：start 标题不引号（单词），程序路径引号
-        QStringList cmdArgs;
-        cmdArgs << "/c" << "start" << "N_m3u8DL-RE" << "/wait"
-                << QDir::toNativeSeparators(pt.program);
-        for (const QString &a : pt.args)
-            cmdArgs << a;
-        proc->start("cmd.exe", cmdArgs);
+        // 独立终端：CREATE_NEW_CONSOLE 让进程在新窗口中运行
+#ifdef Q_OS_WIN
+        proc->setCreateProcessArgumentsModifier(
+            [](QProcess::CreateProcessArguments *args) {
+                args->flags |= CREATE_NEW_CONSOLE;
+                args->startupInfo->dwFlags &= ~STARTF_USESTDHANDLES;
+            });
+#endif
+        proc->start(pt.program, pt.args);
     } else {
         proc->start(pt.program, pt.args);
     }
