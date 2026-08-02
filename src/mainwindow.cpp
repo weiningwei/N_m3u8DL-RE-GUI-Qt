@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QProcess>
 #include <QSettings>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -48,6 +49,20 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    // 有运行中或等待中的任务时，弹窗确认
+    if (!m_tasks.isEmpty() || !m_waiting.isEmpty()) {
+        const int total = m_tasks.size() + m_waiting.size();
+        const QMessageBox::StandardButton r = QMessageBox::question(
+            this, "确认退出",
+            QString("当前有 %1 个下载任务（运行中 %2 / 等待中 %3），确定要退出吗？")
+                .arg(total).arg(m_tasks.size()).arg(m_waiting.size()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (r != QMessageBox::Yes) {
+            event->ignore();
+            return;
+        }
+    }
+
     const QVector<QProcess *> tasks = m_tasks;
     for (QProcess *proc : tasks) {
         if (proc->state() != QProcess::NotRunning) {
