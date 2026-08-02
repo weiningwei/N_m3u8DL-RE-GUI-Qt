@@ -38,6 +38,16 @@ target_include_directories(N_m3u8DL_RE_GUI_Qt PRIVATE include)
 
 target_link_libraries(N_m3u8DL_RE_GUI_Qt PRIVATE Qt6::Widgets)
 
+# 拷贝 third_party 目录到构建目录（存放 N_m3u8DL-RE.exe / ffmpeg.exe 等第三方工具）
+if(EXISTS "${CMAKE_SOURCE_DIR}/third_party")
+    add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/third_party"
+            "$<TARGET_FILE_DIR:N_m3u8DL_RE_GUI_Qt>/third_party"
+        COMMENT "Copying third_party/ to build directory"
+    )
+endif()
+
 # 拷贝资源文件到构建目录，确保运行时可访问
 add_custom_command(TARGET N_m3u8DL_RE_GUI_Qt POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
