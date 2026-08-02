@@ -47,13 +47,6 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle("N_m3u8DL-RE GUI (Qt)");
     resize(920, 720);
 
-    m_process = new QProcess(this);
-    m_process->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_process, &QProcess::readyReadStandardOutput,
-            this, &MainWindow::readProcessOutput);
-    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &MainWindow::processFinished);
-
     auto *central = new QWidget(this);
     m_root = new QVBoxLayout(central);
     m_root->setSpacing(6);
@@ -278,6 +271,8 @@ void MainWindow::buildRunArea()
     btnRow->addWidget(m_stopBtn);
     btnRow->addWidget(genBtn);
     btnRow->addWidget(openBtn);
+    m_taskCountLabel = new QLabel("正在下载任务数量: 0");
+    btnRow->addWidget(m_taskCountLabel);
     btnRow->addStretch(1);
     m_root->addLayout(btnRow);
 
@@ -457,7 +452,7 @@ void MainWindow::generatePreview()
 
 void MainWindow::startDownload()
 {
-    const     QString program = resolvedExePath();
+    const QString program = resolvedExePath();
     if (program.isEmpty()) {
         QMessageBox::warning(this, "提示", "请先设置 N_m3u8DL-RE 可执行文件路径。");
         return;
@@ -474,27 +469,42 @@ void MainWindow::startDownload()
     const QStringList args = buildArguments();
     appendLog("> " + previewCommand(program, args));
 
-    m_process->start(program, args);
-    if (!m_process->waitForStarted(3000)) {
-        appendLog("启动失败: " + m_process->errorString());
+    auto *proc = new QProcess(this);
+    proc->setProcessChannelMode(QProcess::MergedChannels);
+    connect(proc, &QProcess::readyReadStandardOutput,
+            this, &MainWindow::readProcessOutput);
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &MainWindow::processFinished);
+
+    proc->start(program, args);
+    if (!proc->waitForStarted(3000)) {
+        appendLog("启动失败: " + proc->errorString());
+        delete proc;
         return;
     }
-    m_running = true;
-    m_startBtn->setEnabled(false);
-    m_stopBtn->setEnabled(true);
+
+    m_tasks.append(proc);
+    updateTaskCount();
 }
 
 void MainWindow::stopDownload()
 {
-    if (m_process && m_process->state() != QProcess::NotRunning) {
-        m_process->kill();
-        appendLog("已发送停止信号。");
+    if (m_tasks.isEmpty())
+        return;
+    const int n = m_tasks.size();
+    for (QProcess *proc : m_tasks) {
+        if (proc->state() != QProcess::NotRunning)
+            proc->kill();
     }
+    appendLog(QString("已发送停止信号 (%1 个任务)。").arg(n));
 }
 
 void MainWindow::readProcessOutput()
 {
-    const QByteArray data = m_process->readAll();
+    auto *proc = qobject_cast<QProcess *>(sender());
+    if (!proc)
+        return;
+    const QByteArray data = proc->readAll();
     m_log->appendPlainText(QString::fromUtf8(data));
     // Keep the view pinned to the newest output.
     QScrollBar *bar = m_log->verticalScrollBar();
@@ -504,13 +514,23 @@ void MainWindow::readProcessOutput()
 
 void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 {
+    auto *proc = qobject_cast<QProcess *>(sender());
     const QString msg = QString("进程结束 (退出码 %1, %2)")
                             .arg(exitCode)
                             .arg(status == QProcess::NormalExit ? "正常退出" : "异常退出");
     appendLog(msg);
-    m_running = false;
-    m_startBtn->setEnabled(true);
-    m_stopBtn->setEnabled(false);
+    if (proc) {
+        m_tasks.removeAll(proc);
+        proc->deleteLater();
+    }
+    updateTaskCount();
+}
+
+void MainWindow::updateTaskCount()
+{
+    const int n = m_tasks.size();
+    m_taskCountLabel->setText(QString("正在下载任务数量: %1").arg(n));
+    m_stopBtn->setEnabled(n > 0);
 }
 
 void MainWindow::appendLog(const QString &text)
@@ -605,10 +625,10 @@ void MainWindow::about()
 
 void MainWindow::requestExit()
 {
-    if (m_process && m_process->state() != QProcess::NotRunning) {
+    if (!m_tasks.isEmpty()) {
         const QMessageBox::StandardButton r = QMessageBox::question(
             this, "确认退出",
-            "当前有下载任务正在进行，确定要退出吗？",
+            QString("当前有 %1 个下载任务正在进行，确定要退出吗？").arg(m_tasks.size()),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (r != QMessageBox::Yes)
             return;
@@ -859,10 +879,14 @@ void MainWindow::autoDetectFfmpeg()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (m_process && m_process->state() != QProcess::NotRunning) {
-        m_process->kill();
-        m_process->waitForFinished(2000);
+    const QVector<QProcess *> tasks = m_tasks;
+    for (QProcess *proc : tasks) {
+        if (proc->state() != QProcess::NotRunning) {
+            proc->kill();
+            proc->waitForFinished(2000);
+        }
     }
+    m_tasks.clear();
     saveSettings();
     event->accept();
 }

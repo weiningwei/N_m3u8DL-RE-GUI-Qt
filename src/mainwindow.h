@@ -8,6 +8,7 @@
 class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
+class QLabel;
 class QTabWidget;
 class QVBoxLayout;
 class QCloseEvent;
@@ -54,6 +55,8 @@ private slots:
     void setTheme(const QString &name);
     void onAlwaysOnTopToggled(bool on);
 
+    void updateTaskCount();
+
 private:
     void buildToolbar();
     void buildInputArea();
@@ -89,13 +92,13 @@ private:
     QLineEdit *m_cmdPreview = nullptr;
     QPushButton *m_startBtn = nullptr;
     QPushButton *m_stopBtn = nullptr;
+    QLabel *m_taskCountLabel = nullptr;
 
     QAction *m_alwaysOnTopAction = nullptr;
     QVector<QAction *> m_themeActions;
     QString m_currentTheme = "跟随系统";
 
     QVBoxLayout *m_root = nullptr;
-    QProcess *m_process = nullptr;
+    QVector<QProcess *> m_tasks;
     QVector<Entry> m_entries;
-    bool m_running = false;
 };
