@@ -128,6 +128,8 @@ void MainWindow::buildControlRow()
     row->addWidget(new QLabel("保存文件名:"));
     m_saveNameEdit = new QLineEdit();
     m_saveNameEdit->installEventFilter(this);
+    connect(m_saveNameEdit, &QLineEdit::returnPressed,
+            this, &MainWindow::startDownload);
     row->addWidget(m_saveNameEdit, 1);
     row->addWidget(new QLabel("并发:"));
     m_queueEnabledBox = new QCheckBox("限制");
