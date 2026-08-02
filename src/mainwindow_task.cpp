@@ -77,21 +77,6 @@ void MainWindow::startDownload()
     const QString tag = QString("[#%1 %2]").arg(id).arg(shortInput);
     appendLog("> " + previewCommand(program, args), tag);
 
-    // 独立终端模式：在新窗口中启动，不经过队列系统
-    if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
-        QStringList cmdArgs;
-        cmdArgs << "/c" << "start" << "\"N_m3u8DL-RE ["
-                << QString::number(id) << "]\"" << "/D"
-                << QDir::toNativeSeparators(QFileInfo(program).absolutePath())
-                << QDir::toNativeSeparators(program);
-        cmdArgs << args;
-        if (QProcess::startDetached("cmd.exe", cmdArgs))
-            appendLog("已在独立终端中启动。", tag);
-        else
-            appendLog("独立终端启动失败。", tag);
-        return;
-    }
-
     // 在请求时捕获命令行快照，避免排队期间输入框变化导致参数漂移。
     PendingTask pt;
     pt.program = program;
@@ -121,7 +106,7 @@ void MainWindow::startDownload()
 
 void MainWindow::startTaskNow(const PendingTask &pt)
 {
-    // 标记不再等待，并刷新下载列表项文案为"运行中"。
+    // 标记不再等待，并刷新下载列表项文案。
     for (TaskMeta &m : m_taskMetas) {
         if (m.tag == pt.tag) {
             m.waiting = false;
@@ -137,7 +122,20 @@ void MainWindow::startTaskNow(const PendingTask &pt)
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &MainWindow::processFinished);
 
-    proc->start(pt.program, pt.args);
+    if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
+        // 独立终端：通过 cmd /c start /wait 在新窗口中运行，QProcess 追踪 cmd 生命周期
+        QStringList cmdArgs;
+        cmdArgs << "/c" << "start" << "\"N_m3u8DL-RE\""
+                << "/wait" << "/D"
+                << QDir::toNativeSeparators(QFileInfo(pt.program).absolutePath())
+                << QDir::toNativeSeparators(pt.program);
+        for (const QString &a : pt.args)
+            cmdArgs << a;
+        proc->start("cmd.exe", cmdArgs);
+    } else {
+        proc->start(pt.program, pt.args);
+    }
+
     if (!proc->waitForStarted(3000)) {
         appendLog("启动失败: " + proc->errorString(), pt.tag);
         delete proc;
@@ -147,6 +145,9 @@ void MainWindow::startTaskNow(const PendingTask &pt)
     m_taskLabels.insert(proc, pt.tag);
     m_tasks.append(proc);
     updateTaskCount();
+
+    if (m_terminalModeBox && m_terminalModeBox->isChecked())
+        appendLog("已在独立终端中启动。", pt.tag);
 }
 
 void MainWindow::enqueueTask(const PendingTask &pt)
