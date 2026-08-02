@@ -93,6 +93,11 @@ cmake --build build
 4. 点击「生成命令」查看拼装结果，确认无误后点击「开始下载」。
 5. 日志区实时显示程序输出，可随时「停止」；「下载列表」记录任务并可按任务筛选日志。
 
+## 相关项目
+
+- [N_m3u8DL-CLI](https://github.com/nilaoda/N_m3u8DL-CLI) — 最初的命令行下载器，基于 .NET
+- [N_m3u8DL-CLI-SimpleG](https://github.com/nilaoda/N_m3u8DL-CLI-SimpleG) — 带简单 GUI 的版本
+
 ## 目录结构
 
 ```
