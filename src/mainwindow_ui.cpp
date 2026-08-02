@@ -24,6 +24,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QSpinBox>
+#include <QListWidget>
+#include <QAbstractItemView>
 #include <QTabWidget>
 #include <QScrollArea>
 #include <QProcess>
@@ -345,13 +347,20 @@ void MainWindow::buildRunArea()
     btnRow->addStretch(1);
     m_root->addLayout(btnRow);
 
-    auto *filterRow = new QHBoxLayout();
-    filterRow->addWidget(new QLabel("日志过滤:"));
+    // 下载列表：记录已添加的任务，点击某一项即按该任务筛选日志。
+    m_root->addWidget(new QLabel("下载列表:"));
+    m_taskList = new QListWidget();
+    m_taskList->setMaximumHeight(140);
+    m_taskList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_taskList->addItem("全部");   // UserRole 空串 -> 不过滤
+    m_root->addWidget(m_taskList);
+    connect(m_taskList, &QListWidget::itemClicked,
+            this, &MainWindow::onTaskListClicked);
+
+    // m_taskFilter 作为日志过滤的内部状态机保留（隐藏，由下载列表驱动）。
     m_taskFilter = new QComboBox();
     m_taskFilter->addItem("全部");
-    m_taskFilter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    filterRow->addWidget(m_taskFilter, 1);
-    m_root->addLayout(filterRow);
+    m_taskFilter->setVisible(false);
     connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onTaskFilterChanged);
 

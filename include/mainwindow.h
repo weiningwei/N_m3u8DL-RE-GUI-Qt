@@ -17,6 +17,8 @@ class QCloseEvent;
 class QAction;
 class QActionGroup;
 class StringListWidget;
+class QListWidget;
+class QListWidgetItem;
 
 #include <QProcess>
 
@@ -38,6 +40,9 @@ struct TaskMeta {
     QString tag;        // 与 LogLine::tag 对应
     QString label;      // 下拉中显示的简短描述
     bool active = true;
+    bool finished = false;  // 是否已结束
+    bool success = false;   // 是否正常结束
+    int exitCode = 0;
 };
 
 class MainWindow : public QMainWindow {
@@ -75,6 +80,7 @@ private slots:
     void updateTaskCount();
 
     void onTaskFilterChanged(int index);
+    void onTaskListClicked(QListWidgetItem *item);
     QString currentFilterTag() const;
     void refreshLogView();
 
@@ -92,6 +98,7 @@ private:
 
     QStringList buildArguments();
     QString previewCommand(const QString &program, const QStringList &args);
+    QString taskDisplay(const TaskMeta &m) const;
 
     void saveSettings();
     void loadSettings();
@@ -126,6 +133,7 @@ private:
     QPushButton *m_stopBtn = nullptr;
     QLabel *m_taskCountLabel = nullptr;
     QComboBox *m_taskFilter = nullptr;
+    QListWidget *m_taskList = nullptr;   // 下载列表（可视化 + 点击筛选日志）
     QPushButton *m_exeBtn = nullptr;
     QPushButton *m_ffmpegBtn = nullptr;
     QPushButton *m_copyBtn = nullptr;

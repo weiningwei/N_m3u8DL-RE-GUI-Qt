@@ -24,6 +24,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QSpinBox>
+#include <QListWidget>
+#include <QColor>
 #include <QTabWidget>
 #include <QScrollArea>
 #include <QProcess>
@@ -96,6 +98,12 @@ void MainWindow::startDownload()
     m_taskMetas.append(meta);
     m_taskFilter->addItem(QString("#%1 %2").arg(id).arg(shortInput), tag);
 
+    // 同步到下载列表。
+    if (m_taskList) {
+        auto *it = new QListWidgetItem(taskDisplay(meta), m_taskList);
+        it->setData(Qt::UserRole, tag);
+    }
+
     m_tasks.append(proc);
     updateTaskCount();
 }
@@ -157,9 +165,25 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         for (TaskMeta &m : m_taskMetas) {
             if (m.tag == tag) {
                 m.active = false;
+                m.finished = true;
+                m.success = (status == QProcess::NormalExit && exitCode == 0);
+                m.exitCode = exitCode;
                 const int idx = m_taskFilter->findData(tag);
                 if (idx >= 0)
                     m_taskFilter->setItemText(idx, QString("#%1 %2 (已完成)").arg(m.id).arg(m.label));
+                // 更新下载列表项文案与颜色。
+                if (m_taskList) {
+                    for (int i = 0; i < m_taskList->count(); ++i) {
+                        auto *it = m_taskList->item(i);
+                        if (it->data(Qt::UserRole).toString() == tag) {
+                            it->setText(taskDisplay(m));
+                            it->setForeground(m.success
+                                                  ? QColor(46, 125, 50)
+                                                  : QColor(192, 64, 40));
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
@@ -213,4 +237,30 @@ void MainWindow::refreshLogView()
 void MainWindow::onTaskFilterChanged(int /*index*/)
 {
     refreshLogView();
+}
+
+QString MainWindow::taskDisplay(const TaskMeta &m) const
+{
+    QString s = QString("#%1 %2").arg(m.id).arg(m.label);
+    if (!m.finished)
+        s += " — 运行中";
+    else
+        s += m.success ? " — 已完成"
+                       : QString(" — 异常退出(%1)").arg(m.exitCode);
+    return s;
+}
+
+void MainWindow::onTaskListClicked(QListWidgetItem *item)
+{
+    if (!item)
+        return;
+    const QString tag = item->data(Qt::UserRole).toString();
+    if (tag.isEmpty())
+        m_taskFilter->setCurrentIndex(0);   // “全部”
+    else {
+        const int idx = m_taskFilter->findData(tag);
+        if (idx >= 0)
+            m_taskFilter->setCurrentIndex(idx);
+    }
+    // 触发 onTaskFilterChanged -> refreshLogView 按任务筛选日志
 }
