@@ -124,8 +124,6 @@ QVector<Category> buildCategories()
             {Opt::Bool, "--binary-merge", "二进制合并", "二进制合并", "False", {}, 0, false},
             {Opt::Bool, "--use-ffmpeg-concat-demuxer", "使用concat分离器",
              "使用 ffmpeg 合并时, 使用 concat 分离器而非 concat 协议", "False", {}, 0, false},
-            {Opt::PathFile, "--ffmpeg-binary-path", "ffmpeg路径",
-             "ffmpeg可执行程序全路径, 如 C:\\Tools\\ffmpeg.exe", "", {}, 0, false},
             {Opt::Bool, "--no-date-info", "不写入日期信息", "混流时不写入日期信息", "False", {}, 0, false},
         };
         cats.append(c);

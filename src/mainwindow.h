@@ -68,8 +68,18 @@ private:
     void saveSettings();
     void loadSettings();
     void autoDetectExe();
+    void autoDetectFfmpeg();
+
+    QString findInStandardLocations(const QString &exeName) const;
+    void refreshPathHint(QLineEdit *edit, const QString &exeName);
+    void onPathTextChanged(QLineEdit *edit);
+    QString relativeDisplay(const QString &absPath) const;
+    QString effectiveAbsolute(QLineEdit *edit) const;
+    QString resolvedExePath() const;
+    QString resolvedFfmpegPath() const;
 
     QLineEdit *m_exePath = nullptr;
+    QLineEdit *m_ffmpegPath = nullptr;
     QLineEdit *m_input = nullptr;
     QTabWidget *m_tabs = nullptr;
     QPlainTextEdit *m_log = nullptr;
