@@ -17,14 +17,22 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
 add_executable(N_m3u8DL_RE_GUI_Qt
+    include/mainwindow.h
+    include/options.h
+    include/stringlistwidget.h
     src/main.cpp
-    src/options.h
     src/options.cpp
-    src/stringlistwidget.h
     src/stringlistwidget.cpp
-    src/mainwindow.h
     src/mainwindow.cpp
+    src/mainwindow_ui.cpp
+    src/mainwindow_command.cpp
+    src/mainwindow_task.cpp
+    src/mainwindow_clipboard.cpp
+    src/mainwindow_settings.cpp
+    src/mainwindow_paths.cpp
 )
+
+target_include_directories(N_m3u8DL_RE_GUI_Qt PRIVATE include)
 
 target_link_libraries(N_m3u8DL_RE_GUI_Qt PRIVATE Qt6::Widgets)
 
