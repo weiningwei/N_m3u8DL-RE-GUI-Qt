@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include <QVector>
+#include <QHash>
 
 #include "options.h"
 
@@ -100,5 +101,8 @@ private:
 
     QVBoxLayout *m_root = nullptr;
     QVector<QProcess *> m_tasks;
+    QHash<QProcess *, QString> m_taskLabels;  // 进程 -> 日志标签 (如 "[#1 url]")
+    QHash<QProcess *, QString> m_partial;     // 进程 -> 未换行的不完整行缓冲
+    int m_nextTaskId = 0;
     QVector<Entry> m_entries;
 };

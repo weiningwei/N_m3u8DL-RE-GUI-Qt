@@ -483,6 +483,13 @@ void MainWindow::startDownload()
         return;
     }
 
+    const int id = ++m_nextTaskId;
+    const QString input = m_input->text().trimmed();
+    QString shortInput = input;
+    if (shortInput.size() > 28)
+        shortInput = shortInput.left(28) + "…";
+    m_taskLabels.insert(proc, QString("[#%1 %2]").arg(id).arg(shortInput));
+
     m_tasks.append(proc);
     updateTaskCount();
 }
@@ -504,8 +511,17 @@ void MainWindow::readProcessOutput()
     auto *proc = qobject_cast<QProcess *>(sender());
     if (!proc)
         return;
+    const QString tag = m_taskLabels.value(proc);
     const QByteArray data = proc->readAll();
-    m_log->appendPlainText(QString::fromUtf8(data));
+
+    // 按行加前缀，保证每条日志都能区分所属任务。
+    QString &buf = m_partial[proc];
+    buf += QString::fromUtf8(data);
+    QStringList lines = buf.split('\n');
+    buf = lines.takeLast(); // 末尾可能是不完整的半行，留待下次拼接
+    for (const QString &line : lines)
+        m_log->appendPlainText(tag + " " + line);
+
     // Keep the view pinned to the newest output.
     QScrollBar *bar = m_log->verticalScrollBar();
     if (bar)
@@ -515,12 +531,23 @@ void MainWindow::readProcessOutput()
 void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
 {
     auto *proc = qobject_cast<QProcess *>(sender());
-    const QString msg = QString("进程结束 (退出码 %1, %2)")
+    const QString tag = proc ? m_taskLabels.value(proc) : QString();
+
+    // 冲刷该任务残留的半行日志。
+    if (proc && m_partial.contains(proc) && !m_partial[proc].isEmpty()) {
+        m_log->appendPlainText(tag + " " + m_partial.take(proc));
+    }
+
+    const QString msg = QString("%1 进程结束 (退出码 %2, %3)")
+                            .arg(tag)
                             .arg(exitCode)
                             .arg(status == QProcess::NormalExit ? "正常退出" : "异常退出");
     appendLog(msg);
+
     if (proc) {
         m_tasks.removeAll(proc);
+        m_taskLabels.remove(proc);
+        m_partial.remove(proc);
         proc->deleteLater();
     }
     updateTaskCount();
@@ -887,6 +914,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
         }
     }
     m_tasks.clear();
+    m_taskLabels.clear();
+    m_partial.clear();
     saveSettings();
     event->accept();
 }
