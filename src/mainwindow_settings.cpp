@@ -123,6 +123,11 @@ void MainWindow::resetWidgetsToDefaults()
 
     m_exePath->clear();
     m_ffmpegPath->clear();
+    if (m_queueEnabledBox) {
+        m_queueEnabledBox->setChecked(false);
+        m_maxConcurrentBox->setValue(5);
+        m_maxConcurrentBox->setEnabled(false);
+    }
     setTheme("跟随系统");
     m_alwaysOnTopAction->blockSignals(true);
     m_alwaysOnTopAction->setChecked(false);
@@ -207,6 +212,8 @@ void MainWindow::saveSettings()
     QSettings s;
     s.setValue("exePath", m_exePath->text());
     s.setValue("ffmpegPath", m_ffmpegPath->text());
+    s.setValue("queueEnabled", m_queueEnabledBox ? m_queueEnabledBox->isChecked() : false);
+    s.setValue("maxConcurrent", m_maxConcurrentBox ? m_maxConcurrentBox->value() : 5);
     // 注意：链接/文件 与 保存文件名 不持久化
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
@@ -239,6 +246,14 @@ void MainWindow::loadSettings()
     QSettings s;
     m_exePath->setText(s.value("exePath", "").toString());
     m_ffmpegPath->setText(s.value("ffmpegPath", "").toString());
+    // 并发数量限制（排队模式）配置。
+    const bool queueOn = s.value("queueEnabled", false).toBool();
+    const int maxConc = s.value("maxConcurrent", 5).toInt();
+    if (m_queueEnabledBox) {
+        m_queueEnabledBox->setChecked(queueOn);
+        m_maxConcurrentBox->setValue(maxConc);
+        m_maxConcurrentBox->setEnabled(queueOn);
+    }
     // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")

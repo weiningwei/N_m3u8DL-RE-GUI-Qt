@@ -77,6 +77,44 @@ void MainWindow::startDownload()
     const QString tag = QString("[#%1 %2]").arg(id).arg(shortInput);
     appendLog("> " + previewCommand(program, args), tag);
 
+    // 在请求时捕获命令行快照，避免排队期间输入框变化导致参数漂移。
+    PendingTask pt;
+    pt.program = program;
+    pt.args = args;
+    pt.id = id;
+    pt.tag = tag;
+    pt.label = shortInput;
+    pt.meta = TaskMeta{id, tag, shortInput, true};
+    pt.meta.waiting = true;
+
+    // 登记任务到下拉列表（保持"全部"为首项）与下载列表（先显示"等待中"）。
+    m_taskMetas.append(pt.meta);
+    m_taskFilter->addItem(QString("#%1 %2").arg(id).arg(shortInput), tag);
+    if (m_taskList) {
+        auto *it = new QListWidgetItem(taskDisplay(pt.meta), m_taskList);
+        it->setData(Qt::UserRole, tag);
+    }
+
+    // 未启用队列限制，或当前运行数尚未达到上限 -> 立即开始；否则入队等待。
+    const bool limited = m_queueEnabledBox && m_queueEnabledBox->isChecked();
+    const int limit = m_maxConcurrentBox ? m_maxConcurrentBox->value() : 0;
+    if (!limited || limit <= 0 || m_tasks.size() < limit)
+        startTaskNow(pt);
+    else
+        enqueueTask(pt);
+}
+
+void MainWindow::startTaskNow(const PendingTask &pt)
+{
+    // 标记不再等待，并刷新下载列表项文案为"运行中"。
+    for (TaskMeta &m : m_taskMetas) {
+        if (m.tag == pt.tag) {
+            m.waiting = false;
+            setTaskListText(pt.tag, taskDisplay(m));
+            break;
+        }
+    }
+
     auto *proc = new QProcess(this);
     proc->setProcessChannelMode(QProcess::MergedChannels);
     connect(proc, &QProcess::readyReadStandardOutput,
@@ -84,34 +122,103 @@ void MainWindow::startDownload()
     connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &MainWindow::processFinished);
 
-    proc->start(program, args);
+    proc->start(pt.program, pt.args);
     if (!proc->waitForStarted(3000)) {
-        appendLog("启动失败: " + proc->errorString(), tag);
+        appendLog("启动失败: " + proc->errorString(), pt.tag);
         delete proc;
         return;
     }
 
-    m_taskLabels.insert(proc, tag);
-
-    // 登记任务到下拉列表（保持"全部"为首项）。
-    TaskMeta meta{id, tag, shortInput, true};
-    m_taskMetas.append(meta);
-    m_taskFilter->addItem(QString("#%1 %2").arg(id).arg(shortInput), tag);
-
-    // 同步到下载列表。
-    if (m_taskList) {
-        auto *it = new QListWidgetItem(taskDisplay(meta), m_taskList);
-        it->setData(Qt::UserRole, tag);
-    }
-
+    m_taskLabels.insert(proc, pt.tag);
     m_tasks.append(proc);
     updateTaskCount();
 }
 
+void MainWindow::enqueueTask(const PendingTask &pt)
+{
+    m_waiting.append(pt);
+    appendLog(QString("已加入等待队列（当前等待 %1 个）。").arg(m_waiting.size()),
+              pt.tag);
+    updateTaskCount();
+}
+
+void MainWindow::maybeStartQueued()
+{
+    while (!m_waiting.isEmpty()) {
+        if (m_queueEnabledBox && m_queueEnabledBox->isChecked()) {
+            const int limit = m_maxConcurrentBox ? m_maxConcurrentBox->value() : 0;
+            if (limit <= 0 || m_tasks.size() >= limit)
+                break;
+        }
+        startTaskNow(m_waiting.takeFirst());
+    }
+    updateTaskCount();
+}
+
+void MainWindow::setTaskListText(const QString &tag, const QString &text)
+{
+    if (!m_taskList)
+        return;
+    for (int i = 0; i < m_taskList->count(); ++i) {
+        auto *it = m_taskList->item(i);
+        if (it->data(Qt::UserRole).toString() == tag) {
+            it->setText(text);
+            break;
+        }
+    }
+}
+
+void MainWindow::removeTaskByTag(const QString &tag)
+{
+    for (int i = m_taskMetas.size() - 1; i >= 0; --i)
+        if (m_taskMetas.at(i).tag == tag)
+            m_taskMetas.removeAt(i);
+    const int idx = m_taskFilter ? m_taskFilter->findData(tag) : -1;
+    if (idx >= 0)
+        m_taskFilter->removeItem(idx);
+    if (m_taskList) {
+        for (int i = m_taskList->count() - 1; i >= 0; --i) {
+            if (m_taskList->item(i)->data(Qt::UserRole).toString() == tag) {
+                delete m_taskList->takeItem(i);
+                break;
+            }
+        }
+    }
+}
+
+void MainWindow::onQueueToggled(bool on)
+{
+    if (m_maxConcurrentBox)
+        m_maxConcurrentBox->setEnabled(on);
+    QSettings s;
+    s.setValue("queueEnabled", on);
+    // 关闭限制 -> 立即放开所有等待任务（maybeStartQueued 在禁用时不受上限约束）。
+    if (!on)
+        maybeStartQueued();
+    updateTaskCount();
+}
+
+void MainWindow::onMaxConcurrentChanged(int v)
+{
+    QSettings s;
+    s.setValue("maxConcurrent", v);
+    // 调大上限后若有空位，立即填补等待队列。
+    maybeStartQueued();
+}
+
 void MainWindow::stopDownload()
 {
-    if (m_tasks.isEmpty())
+    // 先清空等待队列，避免随后 processFinished 的自动续传逻辑把等待任务重新拉起。
+    if (!m_waiting.isEmpty()) {
+        for (const PendingTask &pt : m_waiting)
+            removeTaskByTag(pt.tag);
+        m_waiting.clear();
+        appendLog("已清空等待队列。");
+    }
+    if (m_tasks.isEmpty()) {
+        updateTaskCount();
         return;
+    }
     const int n = m_tasks.size();
     for (QProcess *proc : m_tasks) {
         if (proc->state() != QProcess::NotRunning)
@@ -190,13 +297,19 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         proc->deleteLater();
     }
     updateTaskCount();
+    // 有任务结束 -> 若等待队列中有任务且仍有空位，自动开启下一个。
+    maybeStartQueued();
 }
 
 void MainWindow::updateTaskCount()
 {
     const int n = m_tasks.size();
-    m_taskCountLabel->setText(QString("正在下载任务数量: %1").arg(n));
-    m_stopBtn->setEnabled(n > 0);
+    const int w = m_waiting.size();
+    QString text = QString("正在下载任务数量: %1").arg(n);
+    if (w > 0)
+        text += QString("    等待中: %1").arg(w);
+    m_taskCountLabel->setText(text);
+    m_stopBtn->setEnabled(n > 0 || w > 0);
 }
 
 void MainWindow::appendLog(const QString &text, const QString &tag)
@@ -242,7 +355,9 @@ void MainWindow::onTaskFilterChanged(int /*index*/)
 QString MainWindow::taskDisplay(const TaskMeta &m) const
 {
     QString s = QString("#%1 %2").arg(m.id).arg(m.label);
-    if (!m.finished)
+    if (m.waiting)
+        s += " — 等待中";
+    else if (!m.finished)
         s += " — 运行中";
     else
         s += m.success ? " — 已完成"

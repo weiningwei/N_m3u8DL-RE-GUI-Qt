@@ -17,6 +17,8 @@ class QCloseEvent;
 class QAction;
 class QActionGroup;
 class StringListWidget;
+class QCheckBox;
+class QSpinBox;
 class QListWidget;
 class QListWidgetItem;
 
@@ -43,6 +45,18 @@ struct TaskMeta {
     bool finished = false;  // 是否已结束
     bool success = false;   // 是否正常结束
     int exitCode = 0;
+    bool waiting = false;   // 是否已加入等待队列但尚未启动
+};
+
+// A download request captured at submission time, so queued tasks keep the
+// exact command line the user entered even if the input box changes later.
+struct PendingTask {
+    QString program;
+    QStringList args;
+    int id = 0;
+    QString tag;
+    QString label;
+    TaskMeta meta;
 };
 
 class MainWindow : public QMainWindow {
@@ -63,6 +77,14 @@ private slots:
     void copyCommand();
     void startDownload();
     void stopDownload();
+
+    void startTaskNow(const PendingTask &pt);
+    void enqueueTask(const PendingTask &pt);
+    void maybeStartQueued();
+    void onQueueToggled(bool on);
+    void onMaxConcurrentChanged(int v);
+    void removeTaskByTag(const QString &tag);
+    void setTaskListText(const QString &tag, const QString &text);
 
     void readProcessOutput();
     void processFinished(int exitCode, QProcess::ExitStatus status);
@@ -153,4 +175,7 @@ private:
 
     QVector<LogLine> m_logLines;   // 全部日志（含任务标签），用于按任务过滤重绘
     QVector<TaskMeta> m_taskMetas; // 所有任务（含已完成），用于下拉列表
+    QVector<PendingTask> m_waiting; // 等待队列（受并发数量限制时暂存）
+    QCheckBox *m_queueEnabledBox = nullptr;  // 「限制同时下载数量」
+    QSpinBox *m_maxConcurrentBox = nullptr;  // 「同时最多下载 N 个」
 };

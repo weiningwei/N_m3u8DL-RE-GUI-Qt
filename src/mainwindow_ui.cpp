@@ -326,6 +326,24 @@ void MainWindow::buildRunArea()
     prevRow->addWidget(copyBtn);
     m_root->addLayout(prevRow);
 
+    // 并发数量限制（排队模式）：勾选后同时运行的任务数受上限约束，超过则进入等待队列。
+    auto *queueRow = new QHBoxLayout();
+    m_queueEnabledBox = new QCheckBox("限制同时下载数量");
+    m_maxConcurrentBox = new QSpinBox();
+    m_maxConcurrentBox->setRange(1, 99);
+    m_maxConcurrentBox->setValue(5);
+    m_maxConcurrentBox->setEnabled(false); // 勾选后才可编辑
+    queueRow->addWidget(m_queueEnabledBox);
+    queueRow->addWidget(new QLabel("同时最多下载:"));
+    queueRow->addWidget(m_maxConcurrentBox);
+    queueRow->addWidget(new QLabel("个"));
+    queueRow->addStretch(1);
+    m_root->addLayout(queueRow);
+    connect(m_queueEnabledBox, &QCheckBox::toggled,
+            this, &MainWindow::onQueueToggled);
+    connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWindow::onMaxConcurrentChanged);
+
     auto *btnRow = new QHBoxLayout();
     m_startBtn = new QPushButton("开始下载");
     m_stopBtn = new QPushButton("停止");
@@ -392,7 +410,8 @@ void MainWindow::setupTabOrder()
     if (saveNameIdx < 0 && m_input)
         chain.append(m_input);   // 兜底
 
-    chain << m_cmdPreview << m_copyBtn << m_startBtn << m_stopBtn
+    chain << m_cmdPreview << m_copyBtn << m_queueEnabledBox << m_maxConcurrentBox
+          << m_startBtn << m_stopBtn
           << m_genBtn << m_openBtn << m_taskFilter;
 
     for (int i = 0; i + 1 < chain.size(); ++i)
