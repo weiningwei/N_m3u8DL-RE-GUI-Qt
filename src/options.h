@@ -32,6 +32,7 @@ struct Opt {
 struct Category {
     QString name;            // tab title
     QVector<Opt> opts;
+    bool twoColumn = false;  // 高级等参数多的面板使用两列网格，相同 group 的选项并排
 };
 
 // Builds the full option tree from the documented CLI parameters.

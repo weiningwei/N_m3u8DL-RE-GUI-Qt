@@ -16,6 +16,7 @@
 #endif
 #include <QHBoxLayout>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
@@ -230,23 +231,55 @@ void MainWindow::buildOptionsUi()
         scroll->setFrameShape(QFrame::NoFrame);
 
         auto *page = new QWidget(scroll);
-        auto *form = new QFormLayout(page);
-        form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-        form->setLabelAlignment(Qt::AlignLeft);
-        form->setHorizontalSpacing(10);
+        auto *vbox = new QVBoxLayout(page);
+        vbox->setSpacing(8);
 
-        for (const Opt &o : cat.opts) {
+        // 注册单个选项并加入目标布局（表单或网格）。
+        auto addOpt = [&](const Opt &o, QLayout *target, int row, int col) {
             QWidget *valueWidget = nullptr;
             QWidget *field = makeOptionWidget(o, &valueWidget);
             auto *label = new QLabel(o.label, page);
             label->setToolTip(o.tooltip);
-            form->addRow(label, field);
-
+            if (cat.twoColumn) {
+                // 两列网格：标签在上、控件在下，功能相近的选项左右并排。
+                auto *cell = new QWidget();
+                auto *cellLay = new QVBoxLayout(cell);
+                cellLay->setContentsMargins(0, 0, 0, 0);
+                cellLay->addWidget(label);
+                cellLay->addWidget(field);
+                static_cast<QGridLayout *>(target)->addWidget(cell, row, col);
+            } else {
+                static_cast<QFormLayout *>(target)->addRow(label, field);
+            }
             Entry e{o, valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
+        };
+
+        if (cat.twoColumn) {
+            auto *grid = new QGridLayout();
+            grid->setHorizontalSpacing(16);
+            grid->setVerticalSpacing(8);
+            int row = 0, col = 0;
+            for (const Opt &o : cat.opts) {
+                addOpt(o, grid, row, col);
+                if (++col >= 2) {   // 每行两个，相邻选项即为功能相近项
+                    col = 0;
+                    ++row;
+                }
+            }
+            vbox->addLayout(grid);
+        } else {
+            auto *form = new QFormLayout();
+            form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+            form->setLabelAlignment(Qt::AlignLeft);
+            form->setHorizontalSpacing(10);
+            for (const Opt &o : cat.opts)
+                addOpt(o, form, 0, 0);
+            vbox->addLayout(form);
         }
 
+        vbox->addStretch(1); // 内容靠上
         scroll->setWidget(page);
         m_tabs->addTab(scroll, cat.name);
     }

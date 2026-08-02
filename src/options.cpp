@@ -162,6 +162,7 @@ QVector<Category> buildCategories()
     {
         Category c;
         c.name = "高级";
+        c.twoColumn = true;
         c.opts = {
             {Opt::Bool, "-mt", "并发下载", "并发下载已选择的音频、视频和字幕", "False", {}, 0, false},
             {Opt::Bool, "--skip-merge", "跳过合并", "跳过合并分片", "False", {}, 0, false},
