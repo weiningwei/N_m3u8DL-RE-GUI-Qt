@@ -12,6 +12,7 @@ class QPushButton;
 class QLabel;
 class QTabWidget;
 class QVBoxLayout;
+class QComboBox;
 class QCloseEvent;
 class QAction;
 class QActionGroup;
@@ -23,6 +24,20 @@ class StringListWidget;
 struct Entry {
     Opt opt;
     QWidget *widget = nullptr;
+};
+
+// A single log line together with the task tag it belongs to.
+struct LogLine {
+    QString tag;   // 如 "[#1 url]"；空串表示与任务无关的界面日志
+    QString text;
+};
+
+// Metadata for a download task, kept after completion so its log stays filterable.
+struct TaskMeta {
+    int id = 0;
+    QString tag;        // 与 LogLine::tag 对应
+    QString label;      // 下拉中显示的简短描述
+    bool active = true;
 };
 
 class MainWindow : public QMainWindow {
@@ -58,6 +73,10 @@ private slots:
 
     void updateTaskCount();
 
+    void onTaskFilterChanged(int index);
+    QString currentFilterTag() const;
+    void refreshLogView();
+
 private:
     void buildToolbar();
     void buildInputArea();
@@ -66,7 +85,7 @@ private:
 
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
     void connectEntryPreview(const Entry &e);
-    void appendLog(const QString &text);
+    void appendLog(const QString &text, const QString &tag = QString());
     void applyUiSettings();
 
     QStringList buildArguments();
@@ -94,6 +113,7 @@ private:
     QPushButton *m_startBtn = nullptr;
     QPushButton *m_stopBtn = nullptr;
     QLabel *m_taskCountLabel = nullptr;
+    QComboBox *m_taskFilter = nullptr;
 
     QAction *m_alwaysOnTopAction = nullptr;
     QVector<QAction *> m_themeActions;
@@ -105,4 +125,7 @@ private:
     QHash<QProcess *, QString> m_partial;     // 进程 -> 未换行的不完整行缓冲
     int m_nextTaskId = 0;
     QVector<Entry> m_entries;
+
+    QVector<LogLine> m_logLines;   // 全部日志（含任务标签），用于按任务过滤重绘
+    QVector<TaskMeta> m_taskMetas; // 所有任务（含已完成），用于下拉列表
 };

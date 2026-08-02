@@ -276,6 +276,16 @@ void MainWindow::buildRunArea()
     btnRow->addStretch(1);
     m_root->addLayout(btnRow);
 
+    auto *filterRow = new QHBoxLayout();
+    filterRow->addWidget(new QLabel("日志过滤:"));
+    m_taskFilter = new QComboBox();
+    m_taskFilter->addItem("全部");
+    m_taskFilter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    filterRow->addWidget(m_taskFilter, 1);
+    m_root->addLayout(filterRow);
+    connect(m_taskFilter, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onTaskFilterChanged);
+
     m_log = new QPlainTextEdit();
     m_log->setReadOnly(true);
     m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -467,7 +477,14 @@ void MainWindow::startDownload()
     }
 
     const QStringList args = buildArguments();
-    appendLog("> " + previewCommand(program, args));
+
+    const int id = ++m_nextTaskId;
+    const QString input = m_input->text().trimmed();
+    QString shortInput = input;
+    if (shortInput.size() > 28)
+        shortInput = shortInput.left(28) + "…";
+    const QString tag = QString("[#%1 %2]").arg(id).arg(shortInput);
+    appendLog("> " + previewCommand(program, args), tag);
 
     auto *proc = new QProcess(this);
     proc->setProcessChannelMode(QProcess::MergedChannels);
@@ -478,17 +495,17 @@ void MainWindow::startDownload()
 
     proc->start(program, args);
     if (!proc->waitForStarted(3000)) {
-        appendLog("启动失败: " + proc->errorString());
+        appendLog("启动失败: " + proc->errorString(), tag);
         delete proc;
         return;
     }
 
-    const int id = ++m_nextTaskId;
-    const QString input = m_input->text().trimmed();
-    QString shortInput = input;
-    if (shortInput.size() > 28)
-        shortInput = shortInput.left(28) + "…";
-    m_taskLabels.insert(proc, QString("[#%1 %2]").arg(id).arg(shortInput));
+    m_taskLabels.insert(proc, tag);
+
+    // 登记任务到下拉列表（保持"全部"为首项）。
+    TaskMeta meta{id, tag, shortInput, true};
+    m_taskMetas.append(meta);
+    m_taskFilter->addItem(QString("#%1 %2").arg(id).arg(shortInput), tag);
 
     m_tasks.append(proc);
     updateTaskCount();
@@ -520,7 +537,7 @@ void MainWindow::readProcessOutput()
     QStringList lines = buf.split('\n');
     buf = lines.takeLast(); // 末尾可能是不完整的半行，留待下次拼接
     for (const QString &line : lines)
-        m_log->appendPlainText(tag + " " + line);
+        appendLog(line, tag);
 
     // Keep the view pinned to the newest output.
     QScrollBar *bar = m_log->verticalScrollBar();
@@ -534,9 +551,8 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
     const QString tag = proc ? m_taskLabels.value(proc) : QString();
 
     // 冲刷该任务残留的半行日志。
-    if (proc && m_partial.contains(proc) && !m_partial[proc].isEmpty()) {
-        m_log->appendPlainText(tag + " " + m_partial.take(proc));
-    }
+    if (proc && m_partial.contains(proc) && !m_partial[proc].isEmpty())
+        appendLog(m_partial.take(proc), tag);
 
     const QString msg = QString("%1 进程结束 (退出码 %2, %3)")
                             .arg(tag)
@@ -548,6 +564,16 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         m_tasks.removeAll(proc);
         m_taskLabels.remove(proc);
         m_partial.remove(proc);
+        // 标记为已完成并更新下拉项文案（保留历史任务可继续过滤查看）。
+        for (TaskMeta &m : m_taskMetas) {
+            if (m.tag == tag) {
+                m.active = false;
+                const int idx = m_taskFilter->findData(tag);
+                if (idx >= 0)
+                    m_taskFilter->setItemText(idx, QString("#%1 %2 (已完成)").arg(m.id).arg(m.label));
+                break;
+            }
+        }
         proc->deleteLater();
     }
     updateTaskCount();
@@ -560,9 +586,44 @@ void MainWindow::updateTaskCount()
     m_stopBtn->setEnabled(n > 0);
 }
 
-void MainWindow::appendLog(const QString &text)
+void MainWindow::appendLog(const QString &text, const QString &tag)
 {
-    m_log->appendPlainText(text);
+    m_logLines.append({tag, text});
+    // 当前显示"全部"或正筛选该任务时，直接追加；否则仅记录、切换筛选时再重绘。
+    if (m_taskFilter == nullptr || m_taskFilter->currentIndex() <= 0
+            || tag == currentFilterTag()) {
+        m_log->appendPlainText((tag.isEmpty() ? QString() : (tag + " ")) + text);
+        QScrollBar *bar = m_log->verticalScrollBar();
+        if (bar)
+            bar->setValue(bar->maximum());
+    }
+}
+
+QString MainWindow::currentFilterTag() const
+{
+    if (!m_taskFilter || m_taskFilter->currentIndex() <= 0)
+        return QString();
+    return m_taskFilter->currentData().toString();
+}
+
+void MainWindow::refreshLogView()
+{
+    const QString sel = currentFilterTag();
+    QString out;
+    for (const LogLine &l : m_logLines) {
+        if (!sel.isEmpty() && l.tag != sel)
+            continue;
+        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+    }
+    m_log->setPlainText(out);
+    QScrollBar *bar = m_log->verticalScrollBar();
+    if (bar)
+        bar->setValue(bar->maximum());
+}
+
+void MainWindow::onTaskFilterChanged(int /*index*/)
+{
+    refreshLogView();
 }
 
 // ------------------------------------------------------------------
