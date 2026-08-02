@@ -80,7 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::buildToolbar()
 {
     auto *fileMenu = menuBar()->addMenu("文件");
-    QAction *exitAction = fileMenu->addAction("退出", this, &QWidget::close);
+    QAction *exitAction = fileMenu->addAction("退出", this, &MainWindow::requestExit);
     exitAction->setShortcut(QKeySequence(Qt::Key_Escape));
 
     auto *settingsMenu = menuBar()->addMenu("设置");
@@ -541,6 +541,19 @@ void MainWindow::about()
         "N_m3u8DL-RE GUI (Qt)\n\n"
         "基于 Qt 的 N_m3u8DL-RE 图形界面。\n"
         "版本 1.0.0");
+}
+
+void MainWindow::requestExit()
+{
+    if (m_process && m_process->state() != QProcess::NotRunning) {
+        const QMessageBox::StandardButton r = QMessageBox::question(
+            this, "确认退出",
+            "当前有下载任务正在进行，确定要退出吗？",
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (r != QMessageBox::Yes)
+            return;
+    }
+    close();
 }
 
 void MainWindow::onThemeActionTriggered(QAction *action)

@@ -46,6 +46,7 @@ private slots:
 
     void openOutputDir();
     void about();
+    void requestExit();
 
     void onThemeActionTriggered(QAction *action);
     void setTheme(const QString &name);
