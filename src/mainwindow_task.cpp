@@ -124,12 +124,13 @@ void MainWindow::startTaskNow(const PendingTask &pt)
             this, &MainWindow::processFinished);
 
     if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
-        // 独立终端：start "" 空标题避免路径被误当成窗口标题
-        QString cmdStr = "start \"\" /wait \""
-                       + QDir::toNativeSeparators(pt.program) + "\"";
+        // 独立终端：start 标题不引号（单词），程序路径引号
+        QStringList cmdArgs;
+        cmdArgs << "/c" << "start" << "N_m3u8DL-RE" << "/wait"
+                << QDir::toNativeSeparators(pt.program);
         for (const QString &a : pt.args)
-            cmdStr += " \"" + a + "\"";
-        proc->start("cmd.exe", {"/c", cmdStr});
+            cmdArgs << a;
+        proc->start("cmd.exe", cmdArgs);
     } else {
         proc->start(pt.program, pt.args);
     }
