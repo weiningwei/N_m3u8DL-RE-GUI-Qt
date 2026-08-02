@@ -103,6 +103,7 @@ private slots:
     void openOutputDir();
     void about();
     void requestExit();
+    bool confirmExit();
     void resetSettings();
     void resetWidgetsToDefaults();
 

@@ -147,14 +147,8 @@ void MainWindow::about()
 
 void MainWindow::requestExit()
 {
-    if (!m_tasks.isEmpty()) {
-        const QMessageBox::StandardButton r = QMessageBox::question(
-            this, "确认退出",
-            QString("当前有 %1 个下载任务正在进行，确定要退出吗？").arg(m_tasks.size()),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-        if (r != QMessageBox::Yes)
-            return;
-    }
+    if (!confirmExit())
+        return;
     close();
 }
 
