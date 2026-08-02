@@ -47,7 +47,38 @@ echo "Build done."
 echo ""
 echo "[2/4] Deploying Qt dependencies..."
 "$QT_DIR/bin/windeployqt" --release --no-translations --no-compiler-runtime \
-    "$BUILD_DIR/N_m3u8DL_RE_GUI_Qt.exe" 2>&1 || echo "(windeployqt warning - may be false alarm, continuing)"
+    "$BUILD_DIR/N_m3u8DL_RE_GUI_Qt.exe" 2>&1 || true
+
+# 确保 DLLs 实际已部署（windeployqt 有时误报后不部署）
+if [ ! -f "$BUILD_DIR/Qt6Core.dll" ]; then
+    echo "windeployqt did not deploy DLLs, manual fallback..."
+
+    # Core Qt DLLs
+    for dll in Qt6Core Qt6Gui Qt6Widgets Qt6Network Qt6Svg; do
+        cp "$QT_DIR/bin/${dll}.dll" "$BUILD_DIR/"
+    done
+
+    # Runtime
+    for dll in libc++.dll libunwind.dll; do
+        [ -f "$TOOLCHAIN/bin/$dll" ] && cp "$TOOLCHAIN/bin/$dll" "$BUILD_DIR/"
+    done
+
+    # Platform plugin
+    mkdir -p "$BUILD_DIR/platforms"
+    cp "$QT_DIR/plugins/platforms/qwindows.dll" "$BUILD_DIR/platforms/"
+
+    # Styles
+    mkdir -p "$BUILD_DIR/styles"
+    cp "$QT_DIR/plugins/styles/qmodernwindowsstyle.dll" "$BUILD_DIR/styles/" 2>/dev/null || true
+
+    # Image formats / icon engines
+    for plug in imageformats iconengines; do
+        if [ -d "$QT_DIR/plugins/$plug" ]; then
+            mkdir -p "$BUILD_DIR/$plug"
+            cp "$QT_DIR/plugins/$plug/"*.dll "$BUILD_DIR/$plug/" 2>/dev/null || true
+        fi
+    done
+fi
 echo "Deploy done."
 
 # ---- Step 3: Create release directory ----
