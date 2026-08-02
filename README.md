@@ -86,25 +86,33 @@
 
 - Qt 6.11+（llvm-mingw_64 或 MSVC kit）
 - LLVM-MinGW 工具链（如 `llvm-mingw1706_64`，MSVC 用户可省略）
-- CMake ≥ 3.19、Ninja
+- CMake ≥ 3.19
 
 ```bash
-export PATH="/d/Qt/Tools/llvm-mingw1706_64/bin:/d/Qt/Tools/Ninja:$PATH"
+export PATH="/d/Qt/Tools/llvm-mingw1706_64/bin:$PATH"
 TOOLCHAIN=/d/Qt/Tools/llvm-mingw1706_64/bin
 
-cmake -GNinja \
+cmake -G "MinGW Makefiles" \
   -S . -B build \
-  -DCMAKE_PREFIX_PATH="D:/Qt/6.11.1/llvm-mingw_64" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="/d/Qt/6.11.1/llvm-mingw_64" \
   -DCMAKE_C_COMPILER="$TOOLCHAIN/x86_64-w64-mingw32-gcc.exe" \
   -DCMAKE_CXX_COMPILER="$TOOLCHAIN/x86_64-w64-mingw32-g++.exe" \
   -DCMAKE_RC_COMPILER="$TOOLCHAIN/x86_64-w64-mingw32-windres.exe"
 
-cmake --build build
+cmake --build build --config Release
 ```
 
-构建完成后用 `windeployqt` 部署依赖：
+构建完成后 `build/` 目录即为完整可运行环境——CMake 已自动部署所有 Qt DLL 和插件，
+无需手动运行 `windeployqt`。
+
+> 也可以在 Qt Creator 中直接打开本目录（识别 `CMakeLists.txt`）
+> 并选择 kit 进行构建。
+
+**一键构建脚本：**
 ```bash
-windeployqt build/N_m3u8DL_RE_GUI_Qt.exe
+# 构建 + 打包 zip 分发包
+./scripts/release.sh [版本号]
 ```
 
 > 也可以在 Qt Creator 中直接打开本目录（识别 `CMakeLists.txt`）并选择 kit 进行构建。
