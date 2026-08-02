@@ -106,6 +106,7 @@ private:
 
     void onInputChanged();
     void autoFillFromClipboard();
+    void onClipboardDataChanged();
     static QString deriveName(const QString &input);
     static bool looksLikeUrl(const QString &text);
 
@@ -114,6 +115,7 @@ private:
     QLineEdit *m_input = nullptr;
     QLineEdit *m_saveNameEdit = nullptr;  // 保存文件名输入框（--save-name）
     QString m_lastAutoName;               // 最近一次自动派生的文件名，用于避免覆盖手动输入
+    QString m_lastClipUrl;                // 最近一次自动从剪贴板捕获的链接，用于实时监听时避免覆盖手动输入
     QTabWidget *m_tabs = nullptr;
     QPlainTextEdit *m_log = nullptr;
     QLineEdit *m_cmdPreview = nullptr;

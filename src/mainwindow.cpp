@@ -32,6 +32,7 @@
 #include <QMessageBox>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QClipboard>
 #include <QRegularExpression>
 #include <QDesktopServices>
 #include <QUrl>
@@ -68,6 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_input, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
     connect(m_input, &QLineEdit::textChanged, this, &MainWindow::onInputChanged);
     connect(m_exePath, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
+    connect(QGuiApplication::clipboard(), &QClipboard::dataChanged,
+            this, &MainWindow::onClipboardDataChanged);
 
     // 启动时若链接框为空且剪贴板是链接/地址，则自动填入。
     autoFillFromClipboard();
@@ -746,8 +749,10 @@ void MainWindow::autoFillFromClipboard()
     if (!m_input->text().isEmpty())
         return;
     const QString clip = QGuiApplication::clipboard()->text();
-    if (looksLikeUrl(clip))
+    if (looksLikeUrl(clip)) {
         m_input->setText(clip.trimmed());
+        m_lastClipUrl = clip.trimmed();
+    }
 }
 
 QString MainWindow::deriveName(const QString &input)
@@ -785,6 +790,9 @@ bool MainWindow::looksLikeUrl(const QString &text)
     const QString t = text.trimmed();
     if (t.isEmpty())
         return false;
+    // 链接一般不含空白；含空白的（如命令预览）不当作链接处理。
+    if (t.contains(' ') || t.contains('\t') || t.contains('\n') || t.contains('\r'))
+        return false;
     if (t.contains("://"))
         return true;
     if (t.startsWith("magnet:", Qt::CaseInsensitive))
@@ -798,6 +806,21 @@ bool MainWindow::looksLikeUrl(const QString &text)
     if (t.size() > 2 && t.at(1) == ':' && (t.at(2) == '\\' || t.at(2) == '/'))
         return true;
     return false;
+}
+
+void MainWindow::onClipboardDataChanged()
+{
+    const QString clip = QGuiApplication::clipboard()->text().trimmed();
+    if (!looksLikeUrl(clip))
+        return;
+    const QString cur = m_input->text().trimmed();
+    if (clip == cur)
+        return;
+    // 仅当链接框为空、或当前内容仍是上次自动捕获的链接时才覆盖，避免破坏手动输入。
+    if (cur.isEmpty() || cur == m_lastClipUrl) {
+        m_input->setText(clip);
+        m_lastClipUrl = clip;
+    }
 }
 
 // ------------------------------------------------------------------
