@@ -137,6 +137,9 @@ void MainWindow::buildControlRow()
     m_maxConcurrentBox->setValue(5);
     m_maxConcurrentBox->setEnabled(false);
     row->addWidget(m_maxConcurrentBox);
+    m_terminalModeBox = new QCheckBox("独立终端");
+    m_terminalModeBox->setToolTip("下载时在新终端窗口中运行，不经过队列");
+    row->addWidget(m_terminalModeBox);
     m_root->addLayout(row);
 
     connect(m_queueEnabledBox, &QCheckBox::toggled,

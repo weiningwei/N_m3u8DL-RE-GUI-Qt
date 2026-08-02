@@ -188,6 +188,7 @@ private:
     QVector<PendingTask> m_waiting; // 等待队列（受并发数量限制时暂存）
     QCheckBox *m_queueEnabledBox = nullptr;  // 「限制同时下载数量」
     QSpinBox *m_maxConcurrentBox = nullptr;  // 「同时最多下载 N 个」
+    QCheckBox *m_terminalModeBox = nullptr;  // 「独立终端」
 };
 
 // 便携模式：所有设置保存在程序目录下的 config.ini

@@ -77,6 +77,21 @@ void MainWindow::startDownload()
     const QString tag = QString("[#%1 %2]").arg(id).arg(shortInput);
     appendLog("> " + previewCommand(program, args), tag);
 
+    // 独立终端模式：在新窗口中启动，不经过队列系统
+    if (m_terminalModeBox && m_terminalModeBox->isChecked()) {
+        QStringList cmdArgs;
+        cmdArgs << "/c" << "start" << "\"N_m3u8DL-RE ["
+                << QString::number(id) << "]\"" << "/D"
+                << QDir::toNativeSeparators(QFileInfo(program).absolutePath())
+                << QDir::toNativeSeparators(program);
+        cmdArgs << args;
+        if (QProcess::startDetached("cmd.exe", cmdArgs))
+            appendLog("已在独立终端中启动。", tag);
+        else
+            appendLog("独立终端启动失败。", tag);
+        return;
+    }
+
     // 在请求时捕获命令行快照，避免排队期间输入框变化导致参数漂移。
     PendingTask pt;
     pt.program = program;
