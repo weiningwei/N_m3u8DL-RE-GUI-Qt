@@ -4,6 +4,7 @@
 
 #include <QApplication>
 #include <QActionGroup>
+#include <QKeySequence>
 #include <QStyleHints>
 #include <QToolBar>
 #include <QToolButton>
@@ -79,7 +80,8 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::buildToolbar()
 {
     auto *fileMenu = menuBar()->addMenu("文件");
-    fileMenu->addAction("退出", this, &QWidget::close);
+    QAction *exitAction = fileMenu->addAction("退出", this, &QWidget::close);
+    exitAction->setShortcut(QKeySequence(Qt::Key_Escape));
 
     auto *settingsMenu = menuBar()->addMenu("设置");
 
