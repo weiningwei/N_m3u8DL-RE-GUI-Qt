@@ -5,7 +5,7 @@
 #include <QVector>
 
 // Describes a single N_m3u8DL-RE command-line option so the UI can be
-// generated declaratively from the documentation in doc/README.md.
+// generated declaratively from the documentation in doc/N_m3u8DL-RE_README.md.
 struct Opt {
     enum Type {
         Bool,       // a switch: emitted only when checked

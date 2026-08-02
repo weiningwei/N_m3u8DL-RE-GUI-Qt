@@ -1,8 +1,12 @@
 # N_m3u8DL-RE-GUI-Qt
 
 基于 **Qt 6** 的 [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) 图形界面。
-将 `doc/README.md` 中记录的命令行参数以分类标签页的形式呈现，并负责拼装命令行、调用
+将 `doc/N_m3u8DL-RE_README.md` 中记录的命令行参数以分类标签页的形式呈现，并负责拼装命令行、调用
 `N_m3u8DL-RE` 可执行文件、实时显示输出日志。
+
+> 本项目是 [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) 的 **Qt 图形前端**，
+> 自身不实现下载逻辑，所有实际的下载 / 解密 / 混流能力均来自该上游命令行工具。
+> 参数参考文档 `doc/N_m3u8DL-RE_README.md` 直接取自上游仓库。
 
 ## 功能
 
@@ -66,5 +70,5 @@ src/
   options.h/.cpp      从文档派生的参数元信息（分类 + 类型 + 说明）
   stringlistwidget.*  可重复项编辑控件（-H / --key / --mux-import）
 CMakeLists.txt
-doc/README.md         N_m3u8DL-RE 命令行参数说明（数据来源）
+doc/N_m3u8DL-RE_README.md  N_m3u8DL-RE 命令行参数说明（取自上游仓库，数据来源）
 ```
