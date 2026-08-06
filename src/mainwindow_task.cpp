@@ -69,10 +69,27 @@ void MainWindow::startDownload()
         return;
     }
 
+    const QString input = m_input->text().trimmed();
+    // 区分三种状态，重复添加时给出对应提示。
+    if (m_completedInputs.contains(input)) {
+        QMessageBox::information(this, "提示",
+                                 QString("该链接已下载完成，请勿重复下载：\n\n%1").arg(input));
+        return;
+    }
+    if (m_downloadingInputs.contains(input)) {
+        QMessageBox::warning(this, "提示",
+                             QString("该链接正在下载中，请勿重复添加：\n\n%1").arg(input));
+        return;
+    }
+    if (m_queuedInputs.contains(input)) {
+        QMessageBox::warning(this, "提示",
+                             QString("该链接正在排队中，请勿重复添加：\n\n%1").arg(input));
+        return;
+    }
+
     const QStringList args = buildArguments();
 
     const int id = ++m_nextTaskId;
-    const QString input = m_input->text().trimmed();
     QString shortInput = input;
     if (shortInput.size() > 28)
         shortInput = shortInput.left(28) + "…";
@@ -108,6 +125,10 @@ void MainWindow::startDownload()
 
 void MainWindow::startTaskNow(const PendingTask &pt)
 {
+    // 状态登记：从"排队中"转入"下载中"（直接新任务时无需移除）。
+    m_queuedInputs.remove(pt.meta.input);
+    m_downloadingInputs.insert(pt.meta.input);
+
     // 标记不再等待，并刷新下载列表项文案。
     for (TaskMeta &m : m_taskMetas) {
         if (m.tag == pt.tag) {
@@ -140,6 +161,7 @@ void MainWindow::startTaskNow(const PendingTask &pt)
 
     if (!proc->waitForStarted(3000)) {
         appendLog("启动失败: " + proc->errorString(), pt.tag, QStringLiteral("ERROR"));
+        m_downloadingInputs.remove(pt.meta.input);  // 启动失败，解除查重
         delete proc;
         return;
     }
@@ -154,6 +176,7 @@ void MainWindow::startTaskNow(const PendingTask &pt)
 
 void MainWindow::enqueueTask(const PendingTask &pt)
 {
+    m_queuedInputs.insert(pt.meta.input);  // 登记为排队中
     m_waiting.append(pt);
     appendLog(QString("已加入等待队列（当前等待 %1 个）。").arg(m_waiting.size()),
               pt.tag);
@@ -188,9 +211,14 @@ void MainWindow::setTaskListText(const QString &tag, const QString &text)
 
 void MainWindow::removeTaskByTag(const QString &tag)
 {
-    for (int i = m_taskMetas.size() - 1; i >= 0; --i)
-        if (m_taskMetas.at(i).tag == tag)
+    for (int i = m_taskMetas.size() - 1; i >= 0; --i) {
+        if (m_taskMetas.at(i).tag == tag) {
+            // 任务被移除（取消等待/清空队列），解除查重。
+            m_downloadingInputs.remove(m_taskMetas.at(i).input);
+            m_queuedInputs.remove(m_taskMetas.at(i).input);
             m_taskMetas.removeAt(i);
+        }
+    }
     const int idx = m_taskFilter ? m_taskFilter->findData(tag) : -1;
     if (idx >= 0)
         m_taskFilter->removeItem(idx);
@@ -333,6 +361,10 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
         // 标记为已完成并更新下拉项文案（保留历史任务可继续过滤查看）。
         for (TaskMeta &m : m_taskMetas) {
             if (m.tag == tag) {
+                m_downloadingInputs.remove(m.input);  // 结束下载，解除"下载中"查重
+                // 下载成功则记入"已完成"，之后重复添加会提示已下载完成。
+                if (status == QProcess::NormalExit && exitCode == 0)
+                    m_completedInputs.insert(m.input);
                 m.active = false;
                 m.finished = true;
                 m.stopping = false;

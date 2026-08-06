@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QHash>
+#include <QSet>
 #include <QSettings>
 
 #include "options.h"
@@ -197,6 +198,9 @@ private:
     QVector<LogLine> m_logLines;   // 全部日志（含任务标签），用于按任务过滤重绘
     QVector<TaskMeta> m_taskMetas; // 所有任务（含已完成），用于下拉列表
     QVector<PendingTask> m_waiting; // 等待队列（受并发数量限制时暂存）
+    QSet<QString> m_downloadingInputs; // 正在下载的链接
+    QSet<QString> m_queuedInputs;      // 排队中的链接
+    QSet<QString> m_completedInputs;   // 已下载完成的链接
     QCheckBox *m_queueEnabledBox = nullptr;  // 「限制同时下载数量」
     QSpinBox *m_maxConcurrentBox = nullptr;  // 「同时最多下载 N 个」
     QCheckBox *m_terminalModeBox = nullptr;  // 「独立终端」
