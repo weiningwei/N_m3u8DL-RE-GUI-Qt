@@ -9,6 +9,9 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QMenu>
+#include <QAction>
+#include <QKeyEvent>
+#include <QContextMenuEvent>
 #include <QVBoxLayout>
 
 #ifdef Q_OS_WIN
@@ -47,6 +50,62 @@
 #include <QScrollBar>
 #include <QSplitter>
 #include <QOverload>
+
+// ------------------------------------------------------------------
+// 粘贴时自动去除首尾空白的输入框（用于保存文件名等）。
+// ------------------------------------------------------------------
+class TrimmedPasteLineEdit : public QLineEdit {
+public:
+    using QLineEdit::QLineEdit;
+protected:
+    void keyPressEvent(QKeyEvent *e) override
+    {
+        // Ctrl+V / Shift+Insert 粘贴时去除首尾空白。
+        if ((e->key() == Qt::Key_V && e->modifiers().testFlag(Qt::ControlModifier))
+                || (e->key() == Qt::Key_Insert && e->modifiers().testFlag(Qt::ShiftModifier))) {
+            insert(QGuiApplication::clipboard()->text().trimmed());
+            return;
+        }
+        QLineEdit::keyPressEvent(e);
+    }
+    void contextMenuEvent(QContextMenuEvent *event) override
+    {
+        // 完全自定义右键菜单，避免依赖标准菜单里难以识别的"Paste"项。
+        QMenu menu(this);
+
+        QAction *undoAct = menu.addAction("撤销", this, &QLineEdit::undo);
+        undoAct->setShortcut(QKeySequence::Undo);
+        undoAct->setEnabled(isUndoAvailable());
+        QAction *redoAct = menu.addAction("重做", this, &QLineEdit::redo);
+        redoAct->setShortcut(QKeySequence::Redo);
+        redoAct->setEnabled(isRedoAvailable());
+
+        menu.addSeparator();
+
+        QAction *cutAct = menu.addAction("剪切", this, &QLineEdit::cut);
+        cutAct->setShortcut(QKeySequence::Cut);
+        cutAct->setEnabled(!isReadOnly() && hasSelectedText());
+        QAction *copyAct = menu.addAction("复制", this, &QLineEdit::copy);
+        copyAct->setShortcut(QKeySequence::Copy);
+        copyAct->setEnabled(hasSelectedText());
+        QAction *pasteAct = menu.addAction("粘贴", this, [this]() {
+            insert(QGuiApplication::clipboard()->text().trimmed());  // 去首尾空格
+        });
+        pasteAct->setShortcut(QKeySequence::Paste);
+        pasteAct->setEnabled(!isReadOnly());
+        QAction *delAct = menu.addAction("删除", this, &QLineEdit::del);
+        delAct->setShortcut(QKeySequence::Delete);
+        delAct->setEnabled(!isReadOnly() && hasSelectedText());
+
+        menu.addSeparator();
+
+        QAction *selAllAct = menu.addAction("全选", this, &QLineEdit::selectAll);
+        selAllAct->setShortcut(QKeySequence::SelectAll);
+        selAllAct->setEnabled(!text().isEmpty());
+
+        menu.exec(event->globalPos());
+    }
+};
 
 // ------------------------------------------------------------------
 // UI construction
@@ -127,7 +186,7 @@ void MainWindow::buildControlRow()
     // 保存文件名 + 并发限制，同一行。
     auto *row = new QHBoxLayout();
     row->addWidget(new QLabel("保存文件名:"));
-    m_saveNameEdit = new QLineEdit();
+    m_saveNameEdit = new TrimmedPasteLineEdit();
     m_saveNameEdit->installEventFilter(this);
     connect(m_saveNameEdit, &QLineEdit::returnPressed,
             this, &MainWindow::startDownload);
