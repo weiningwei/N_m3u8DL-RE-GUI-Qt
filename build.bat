@@ -127,7 +127,7 @@ echo Starting application...
 :: Restore original PATH so exe loads DLLs from its own directory, not Qt bin
 set PATH=%ORIGINAL_PATH%
 start "N_m3u8DL-RE GUI" /D "%~dp0build" "%EXE_PATH%"
-echo Application launched (PID should appear in Task Manager).
-echo If the window does not appear, check if it is hidden behind other windows.
+echo Application launched. Closing terminal...
 echo.
-pause
+:: Success: auto-close the terminal window
+exit /b 0
