@@ -33,7 +33,9 @@ struct Entry {
 
 // A single log line together with the task tag it belongs to.
 struct LogLine {
-    QString tag;   // 如 "[#1 url]"；空串表示与任务无关的界面日志
+    QString tag;    // 如 "[#1 url]"；空串表示与任务无关的界面日志
+    QString level;  // 日志级别：INFO / WARNING / ERROR
+    QString time;   // 操作时间：yyyy-MM-dd HH:mm:ss
     QString text;
 };
 
@@ -130,7 +132,8 @@ private:
 
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
     void connectEntryPreview(const Entry &e);
-    void appendLog(const QString &text, const QString &tag = QString());
+    void appendLog(const QString &text, const QString &tag = QString(),
+                   const QString &level = QStringLiteral("INFO"));
     void applyUiSettings();
 
     QStringList buildArguments();

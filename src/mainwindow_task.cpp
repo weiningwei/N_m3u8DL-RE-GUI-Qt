@@ -46,6 +46,7 @@
 #include <QCloseEvent>
 #include <QMenuBar>
 #include <QScrollBar>
+#include <QDateTime>
 #include <QOverload>
 
 // ------------------------------------------------------------------
@@ -138,7 +139,7 @@ void MainWindow::startTaskNow(const PendingTask &pt)
     }
 
     if (!proc->waitForStarted(3000)) {
-        appendLog("启动失败: " + proc->errorString(), pt.tag);
+        appendLog("启动失败: " + proc->errorString(), pt.tag, QStringLiteral("ERROR"));
         delete proc;
         return;
     }
@@ -260,6 +261,29 @@ void MainWindow::stopDownload()
     appendLog(QString("已发送停止信号 (%1 个任务)。").arg(n));
 }
 
+// 单行日志统一格式：[yyyy-MM-dd HH:mm:ss] [级别] [任务标签] 内容
+static QString formatLogLine(const QString &tag, const QString &level,
+                             const QString &time, const QString &text)
+{
+    QString s = QString("[%1] [%2] ").arg(time, level);
+    if (!tag.isEmpty())
+        s += tag + " ";
+    s += text;
+    return s;
+}
+
+// 从内容关键词推断日志级别（用于 N_m3u8DL-RE 等进程输出）。
+static QString inferLogLevel(const QString &text)
+{
+    const QString t = text.toLower();
+    if (t.contains("error") || t.contains("fatal") || t.contains("fail")
+            || t.contains("错误") || t.contains("失败"))
+        return QStringLiteral("ERROR");
+    if (t.contains("warn") || t.contains("警告"))
+        return QStringLiteral("WARNING");
+    return QStringLiteral("INFO");
+}
+
 void MainWindow::readProcessOutput()
 {
     auto *proc = qobject_cast<QProcess *>(sender());
@@ -274,7 +298,7 @@ void MainWindow::readProcessOutput()
     QStringList lines = buf.split('\n');
     buf = lines.takeLast(); // 末尾可能是不完整的半行，留待下次拼接
     for (const QString &line : lines)
-        appendLog(line, tag);
+        appendLog(line, tag, inferLogLevel(line));
 
     // Keep the view pinned to the newest output.
     QScrollBar *bar = m_log->verticalScrollBar();
@@ -288,14 +312,19 @@ void MainWindow::processFinished(int exitCode, QProcess::ExitStatus status)
     const QString tag = proc ? m_taskLabels.value(proc) : QString();
 
     // 冲刷该任务残留的半行日志。
-    if (proc && m_partial.contains(proc) && !m_partial[proc].isEmpty())
-        appendLog(m_partial.take(proc), tag);
+    if (proc && m_partial.contains(proc) && !m_partial[proc].isEmpty()) {
+        const QString rest = m_partial.take(proc);
+        appendLog(rest, tag, inferLogLevel(rest));
+    }
 
     const QString msg = QString("%1 进程结束 (退出码 %2, %3)")
                             .arg(tag)
                             .arg(exitCode)
                             .arg(status == QProcess::NormalExit ? "正常退出" : "异常退出");
-    appendLog(msg);
+    const QString level = (status == QProcess::NormalExit && exitCode == 0)
+                              ? QStringLiteral("INFO")
+                              : QStringLiteral("ERROR");
+    appendLog(msg, QString(), level);
 
     if (proc) {
         m_tasks.removeAll(proc);
@@ -350,9 +379,10 @@ void MainWindow::updateTaskCount()
         m_stopBtn->setText("停止所有");
 }
 
-void MainWindow::appendLog(const QString &text, const QString &tag)
+void MainWindow::appendLog(const QString &text, const QString &tag, const QString &level)
 {
-    m_logLines.append({tag, text});
+    const QString timeStr = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+    m_logLines.append({tag, level, timeStr, text});
     // 当前显示"全部"或正筛选该任务时，直接追加；否则仅记录、切换筛选时再重绘。
     if (m_taskFilter == nullptr || m_taskFilter->currentIndex() <= 0
             || tag == currentFilterTag()) {
@@ -360,7 +390,7 @@ void MainWindow::appendLog(const QString &text, const QString &tag)
         QScrollBar *bar = m_log->verticalScrollBar();
         const bool atBottom = bar
             && (bar->value() >= bar->maximum() - bar->pageStep() - 20);
-        m_log->appendPlainText((tag.isEmpty() ? QString() : (tag + " ")) + text);
+        m_log->appendPlainText(formatLogLine(tag, level, timeStr, text));
         if (atBottom && bar)
             bar->setValue(bar->maximum());
     }
@@ -380,7 +410,7 @@ void MainWindow::refreshLogView()
     for (const LogLine &l : m_logLines) {
         if (!sel.isEmpty() && l.tag != sel)
             continue;
-        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+        out += formatLogLine(l.tag, l.level, l.time, l.text) + "\n";
     }
     m_log->setPlainText(out);
     QScrollBar *bar = m_log->verticalScrollBar();
@@ -477,7 +507,7 @@ void MainWindow::copyAllLog()
 {
     QString out;
     for (const LogLine &l : m_logLines)
-        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+        out += formatLogLine(l.tag, l.level, l.time, l.text) + "\n";
     QApplication::clipboard()->setText(out);
 }
 
@@ -488,7 +518,7 @@ void MainWindow::copyVisibleLog()
     for (const LogLine &l : m_logLines) {
         if (!sel.isEmpty() && l.tag != sel)
             continue;
-        out += (l.tag.isEmpty() ? QString() : (l.tag + " ")) + l.text + "\n";
+        out += formatLogLine(l.tag, l.level, l.time, l.text) + "\n";
     }
     QApplication::clipboard()->setText(out);
 }

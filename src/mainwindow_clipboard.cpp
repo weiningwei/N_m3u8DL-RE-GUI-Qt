@@ -43,6 +43,7 @@
 #include <QCloseEvent>
 #include <QMenuBar>
 #include <QScrollBar>
+#include <QStatusBar>
 #include <QOverload>
 
 // ------------------------------------------------------------------
@@ -86,6 +87,8 @@ void MainWindow::maybeAutoFillFromClipboard()
     if (cur.isEmpty() || cur == m_lastClipUrl) {
         m_input->setText(clip);
         m_lastClipUrl = clip;
+        appendLog(QString("已从剪贴板自动获取链接: %1").arg(clip));
+        statusBar()->showMessage(QString("已自动获取剪贴板链接: %1").arg(clip), 4000);
     }
 }
 
