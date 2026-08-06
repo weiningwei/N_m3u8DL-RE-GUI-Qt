@@ -74,14 +74,18 @@ void MainWindow::onInputChanged()
     }
 }
 
-void MainWindow::autoFillFromClipboard()
+void MainWindow::maybeAutoFillFromClipboard()
 {
-    if (!m_input->text().isEmpty())
+    const QString clip = QGuiApplication::clipboard()->text().trimmed();
+    if (!looksLikeUrl(clip))
         return;
-    const QString clip = QGuiApplication::clipboard()->text();
-    if (looksLikeUrl(clip)) {
-        m_input->setText(clip.trimmed());
-        m_lastClipUrl = clip.trimmed();
+    const QString cur = m_input->text().trimmed();
+    if (clip == cur)
+        return;
+    // 仅当链接框为空、或当前内容仍是上次自动捕获的链接时才覆盖，避免破坏手动输入。
+    if (cur.isEmpty() || cur == m_lastClipUrl) {
+        m_input->setText(clip);
+        m_lastClipUrl = clip;
     }
 }
 
@@ -136,19 +140,4 @@ bool MainWindow::looksLikeUrl(const QString &text)
     if (t.size() > 2 && t.at(1) == ':' && (t.at(2) == '\\' || t.at(2) == '/'))
         return true;
     return false;
-}
-
-void MainWindow::onClipboardDataChanged()
-{
-    const QString clip = QGuiApplication::clipboard()->text().trimmed();
-    if (!looksLikeUrl(clip))
-        return;
-    const QString cur = m_input->text().trimmed();
-    if (clip == cur)
-        return;
-    // 仅当链接框为空、或当前内容仍是上次自动捕获的链接时才覆盖，避免破坏手动输入。
-    if (cur.isEmpty() || cur == m_lastClipUrl) {
-        m_input->setText(clip);
-        m_lastClipUrl = clip;
-    }
 }

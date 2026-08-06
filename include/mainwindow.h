@@ -156,8 +156,7 @@ private:
     QString resolvedFfmpegPath() const;
 
     void onInputChanged();
-    void autoFillFromClipboard();
-    void onClipboardDataChanged();
+    void maybeAutoFillFromClipboard();
     static QString deriveName(const QString &input);
     static bool looksLikeUrl(const QString &text);
 

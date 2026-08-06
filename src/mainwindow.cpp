@@ -2,7 +2,6 @@
 
 #include <QVBoxLayout>
 #include <QGuiApplication>
-#include <QClipboard>
 #include <QCloseEvent>
 #include <QEvent>
 #include <QLineEdit>
@@ -36,11 +35,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_input, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
     connect(m_input, &QLineEdit::textChanged, this, &MainWindow::onInputChanged);
     connect(m_exePath, &QLineEdit::textChanged, this, &MainWindow::generatePreview);
-    connect(QGuiApplication::clipboard(), &QClipboard::dataChanged,
-            this, &MainWindow::onClipboardDataChanged);
+    // 仅当应用切换到前台（获得焦点）时才自动获取剪贴板链接，
+    // 不再在后台运行时持续监听剪贴板变化。
+    connect(static_cast<QGuiApplication *>(QGuiApplication::instance()),
+            &QGuiApplication::applicationStateChanged,
+            this, [this](Qt::ApplicationState state) {
+                if (state == Qt::ApplicationActive)
+                    maybeAutoFillFromClipboard();
+            });
 
     // 启动时若链接框为空且剪贴板是链接/地址，则自动填入。
-    autoFillFromClipboard();
+    maybeAutoFillFromClipboard();
 
     setupTabOrder();
 
