@@ -397,10 +397,12 @@ void MainWindow::buildFoldableSettings()
         presetRow->addWidget(m_presetNameEdit);
 
         auto *saveBtn = new QPushButton("保存预设");
+        m_presetSaveBtn = saveBtn;
         connect(saveBtn, &QPushButton::clicked, this, &MainWindow::onSavePreset);
         presetRow->addWidget(saveBtn);
 
         auto *delBtn = new QPushButton("删除");
+        m_presetDelBtn = delBtn;
         connect(delBtn, &QPushButton::clicked, this, &MainWindow::onDeletePreset);
         presetRow->addWidget(delBtn);
 
@@ -468,18 +470,26 @@ void MainWindow::buildMonitorArea()
 
 void MainWindow::setupTabOrder()
 {
+    // 严格按界面从上到下、每行从左到右排列。
     QVector<QWidget *> chain;
-    chain << m_input << m_startBtn
-          << m_saveNameEdit << m_queueEnabledBox << m_maxConcurrentBox
-          << m_stopBtn << m_genBtn << m_openBtn
-          << m_exePath << m_exeBtn << m_ffmpegPath << m_ffmpegBtn;
-
-    // 选项标签页内的控件（m_tabs 在 foldWidget 内）
-    chain << m_tabs;
-    for (const Entry &e : m_entries)
+    chain << m_input << m_startBtn;                       // 链接行
+    chain << m_saveNameEdit << m_queueEnabledBox         // 保存文件名行
+          << m_maxConcurrentBox << m_terminalModeBox;
+    chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
+    chain << m_tabs;                                     // 参数标签页
+    for (const Entry &e : m_entries) {
+        // --save-name 复用 m_saveNameEdit，它已在上方主链中，
+        // 不能在这里重复链接，否则会覆盖主链顺序。
+        if (e.widget == m_saveNameEdit)
+            continue;
         chain.append(e.widget);
-
-    chain << m_cmdPreview << m_copyBtn << m_taskFilter;
+    }
+    chain << m_exePath << m_exeBtn                       // 程序 / ffmpeg 行
+          << m_ffmpegPath << m_ffmpegBtn;
+    chain << m_presetCombo << m_presetNameEdit           // 预设行
+          << m_presetSaveBtn << m_presetDelBtn;
+    chain << m_cmdPreview << m_copyBtn;                  // 命令预览行
+    chain << m_taskList << m_taskFilter << m_log;        // 下载列表 | 日志
 
     for (int i = 0; i + 1 < chain.size(); ++i)
         setTabOrder(chain.at(i), chain.at(i + 1));

@@ -200,6 +200,8 @@ private:
     QCheckBox *m_terminalModeBox = nullptr;  // 「独立终端」
     QComboBox *m_presetCombo = nullptr;      // 预设选择
     QLineEdit *m_presetNameEdit = nullptr;   // 预设名称输入
+    QPushButton *m_presetSaveBtn = nullptr;  // 保存预设
+    QPushButton *m_presetDelBtn = nullptr;   // 删除预设
     QString m_currentPreset;                  // 当前活动预设名
 };
 
