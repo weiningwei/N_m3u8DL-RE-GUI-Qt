@@ -107,6 +107,7 @@ void MainWindow::buildInputRow()
     auto *row = new QHBoxLayout();
     row->addWidget(new QLabel("链接:"));
     m_input = new QLineEdit();
+    m_input->installEventFilter(this);  // 双击链接框时自动派生保存文件名
     m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
     m_input->setMinimumHeight(28);
     row->addWidget(m_input, 1);
