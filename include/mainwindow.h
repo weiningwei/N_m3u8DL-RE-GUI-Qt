@@ -124,6 +124,7 @@ private slots:
 
 private:
     void buildToolbar();
+    void buildPathRow();
     void buildInputRow();
     void buildControlRow();
     void buildCenterTabs();
@@ -169,7 +170,7 @@ private:
     QListWidget *m_settingsNav = nullptr;      // 参数设置侧边栏
     QStackedWidget *m_settingsStack = nullptr; // 参数设置内容区
     QPlainTextEdit *m_log = nullptr;
-    QLineEdit *m_cmdPreview = nullptr;
+    QPlainTextEdit *m_cmdPreview = nullptr;
     QPushButton *m_startBtn = nullptr;
     QPushButton *m_stopBtn = nullptr;
     QLabel *m_taskCountLabel = nullptr;

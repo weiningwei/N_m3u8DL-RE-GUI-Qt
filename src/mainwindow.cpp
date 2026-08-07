@@ -21,9 +21,10 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(central);
 
     buildToolbar();
-    buildInputRow();         // 链接 + 开始下载
-    buildControlRow();       // 保存文件名 + 并发 + 按钮 + 计数
-    buildCenterTabs();       // 下载列表 | 参数设置（两个独立页面）
+    buildPathRow();        // 程序 / ffmpeg 路径（合并一行，置于链接上方）
+    buildInputRow();       // 链接 + 开始下载
+    buildControlRow();     // 保存文件名 + 并发 + 按钮 + 计数
+    buildCenterTabs();     // 下载列表 | 参数设置（两个独立页面）
 
     loadSettings();
     autoDetectExe();

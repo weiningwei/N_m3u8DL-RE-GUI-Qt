@@ -148,12 +148,12 @@ void MainWindow::generatePreview()
 {
     const QString program = resolvedExePath();
     const QStringList args = buildArguments();
-    m_cmdPreview->setText(previewCommand(program, args));
+    m_cmdPreview->setPlainText(previewCommand(program, args));
 }
 
 void MainWindow::copyCommand()
 {
-    QGuiApplication::clipboard()->setText(m_cmdPreview->text());
+    QGuiApplication::clipboard()->setText(m_cmdPreview->toPlainText());
     appendLog("命令已复制到剪贴板。");
 }
 

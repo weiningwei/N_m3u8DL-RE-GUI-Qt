@@ -53,6 +53,12 @@
 #include <QOverload>
 
 // ------------------------------------------------------------------
+// 顶部各输入行的统一 label 宽度：保证程序/ffmpeg/链接/保存文件名
+// 各行的输入框在纵向对齐。
+// ------------------------------------------------------------------
+static constexpr int kFieldLabelWidth = 80;
+
+// ------------------------------------------------------------------
 // 粘贴时自动去除首尾空白的输入框（用于保存文件名等）。
 // ------------------------------------------------------------------
 class TrimmedPasteLineEdit : public QLineEdit {
@@ -161,11 +167,51 @@ void MainWindow::buildToolbar()
     toolBar->addAction(resetAction);
 }
 
+void MainWindow::buildPathRow()
+{
+    // 程序 / ffmpeg 路径各占一行，置于链接输入上方，label 统一宽度使输入框纵向对齐。
+    auto *exeRow = new QHBoxLayout();
+    auto *exeLabel = new QLabel("程序:");
+    exeLabel->setFixedWidth(kFieldLabelWidth);
+    exeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    exeRow->addWidget(exeLabel);
+    m_exePath = new QLineEdit();
+    m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
+    exeRow->addWidget(m_exePath, 1);
+    m_exeBtn = new QPushButton("浏览...");
+    connect(m_exeBtn, &QPushButton::clicked,
+            this, &MainWindow::browseExe);
+    exeRow->addWidget(m_exeBtn);
+    m_root->addLayout(exeRow);
+
+    auto *ffRow = new QHBoxLayout();
+    auto *ffLabel = new QLabel("ffmpeg:");
+    ffLabel->setFixedWidth(kFieldLabelWidth);
+    ffLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    ffRow->addWidget(ffLabel);
+    m_ffmpegPath = new QLineEdit();
+    m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
+    ffRow->addWidget(m_ffmpegPath, 1);
+    m_ffmpegBtn = new QPushButton("浏览...");
+    connect(m_ffmpegBtn, &QPushButton::clicked,
+            this, [this]() { browseFor(m_ffmpegPath, false); });
+    ffRow->addWidget(m_ffmpegBtn);
+    m_root->addLayout(ffRow);
+
+    connect(m_exePath, &QLineEdit::textChanged,
+            this, [this]() { onPathTextChanged(m_exePath); });
+    connect(m_ffmpegPath, &QLineEdit::textChanged,
+            this, [this]() { onPathTextChanged(m_ffmpegPath); });
+}
+
 void MainWindow::buildInputRow()
 {
     // 链接输入 + 开始下载按钮：置顶、醒目。
     auto *row = new QHBoxLayout();
-    row->addWidget(new QLabel("链接:"));
+    auto *linkLabel = new QLabel("链接:");
+    linkLabel->setFixedWidth(kFieldLabelWidth);
+    linkLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    row->addWidget(linkLabel);
     m_input = new QLineEdit();
     m_input->installEventFilter(this);  // 双击链接框时自动派生保存文件名
     m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
@@ -184,31 +230,18 @@ void MainWindow::buildInputRow()
 
 void MainWindow::buildControlRow()
 {
-    // 保存文件名 + 并发限制，同一行。
+    // 保存文件名：占满整行，输入框与上方程序/ffmpeg/链接行同宽对齐。
     auto *row = new QHBoxLayout();
-    row->addWidget(new QLabel("保存文件名:"));
+    auto *saveLabel = new QLabel("保存文件名:");
+    saveLabel->setFixedWidth(kFieldLabelWidth);
+    saveLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    row->addWidget(saveLabel);
     m_saveNameEdit = new TrimmedPasteLineEdit();
     m_saveNameEdit->installEventFilter(this);
     connect(m_saveNameEdit, &QLineEdit::returnPressed,
             this, &MainWindow::startDownload);
     row->addWidget(m_saveNameEdit, 1);
-    row->addWidget(new QLabel("并发:"));
-    m_queueEnabledBox = new QCheckBox("限制");
-    row->addWidget(m_queueEnabledBox);
-    m_maxConcurrentBox = new QSpinBox();
-    m_maxConcurrentBox->setRange(1, 99);
-    m_maxConcurrentBox->setValue(5);
-    m_maxConcurrentBox->setEnabled(false);
-    row->addWidget(m_maxConcurrentBox);
-    m_terminalModeBox = new QCheckBox("独立终端");
-    m_terminalModeBox->setToolTip("下载时在新终端窗口中运行，不经过队列");
-    row->addWidget(m_terminalModeBox);
     m_root->addLayout(row);
-
-    connect(m_queueEnabledBox, &QCheckBox::toggled,
-            this, &MainWindow::onQueueToggled);
-    connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::onMaxConcurrentChanged);
 
     // 按钮行：停止 / 生成 / 打开 + 任务数量。
     auto *btnRow = new QHBoxLayout();
@@ -432,50 +465,24 @@ QWidget *MainWindow::buildSettingsPage()
     )");
     pageLayout->addLayout(settingsSplit, 1);
 
-    // ====== 路径与命令预览 ======
-
-    // 程序 / ffmpeg 路径
-    {
-        auto *exeRow = new QHBoxLayout();
-        exeRow->addWidget(new QLabel("程序:"));
-        m_exePath = new QLineEdit();
-        m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
-        exeRow->addWidget(m_exePath, 1);
-        m_exeBtn = new QPushButton("浏览...");
-        connect(m_exeBtn, &QPushButton::clicked,
-                this, &MainWindow::browseExe);
-        exeRow->addWidget(m_exeBtn);
-        pageLayout->addLayout(exeRow);
-
-        auto *ffRow = new QHBoxLayout();
-        ffRow->addWidget(new QLabel("ffmpeg:"));
-        m_ffmpegPath = new QLineEdit();
-        m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
-        ffRow->addWidget(m_ffmpegPath, 1);
-        m_ffmpegBtn = new QPushButton("浏览...");
-        connect(m_ffmpegBtn, &QPushButton::clicked,
-                this, [this]() { browseFor(m_ffmpegPath, false); });
-        ffRow->addWidget(m_ffmpegBtn);
-        pageLayout->addLayout(ffRow);
-
-        connect(m_exePath, &QLineEdit::textChanged,
-                this, [this]() { onPathTextChanged(m_exePath); });
-        connect(m_ffmpegPath, &QLineEdit::textChanged,
-                this, [this]() { onPathTextChanged(m_ffmpegPath); });
-    }
-
-    // 命令预览
+    // ====== 命令预览 ======
     {
         auto *cmdRow = new QHBoxLayout();
         cmdRow->addWidget(new QLabel("命令预览:"));
-        m_cmdPreview = new QLineEdit();
-        m_cmdPreview->setReadOnly(true);
-        cmdRow->addWidget(m_cmdPreview, 1);
+        cmdRow->addStretch(1);
         m_copyBtn = new QPushButton("复制");
         connect(m_copyBtn, &QPushButton::clicked,
                 this, &MainWindow::copyCommand);
         cmdRow->addWidget(m_copyBtn);
         pageLayout->addLayout(cmdRow);
+
+        m_cmdPreview = new QPlainTextEdit();
+        m_cmdPreview->setReadOnly(true);
+        m_cmdPreview->setLineWrapMode(QPlainTextEdit::NoWrap);
+        m_cmdPreview->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        m_cmdPreview->setMinimumHeight(48);
+        m_cmdPreview->setMaximumHeight(96);
+        pageLayout->addWidget(m_cmdPreview);
     }
 
     return page;
@@ -486,6 +493,31 @@ QWidget *MainWindow::buildDownloadPage()
     auto *page = new QWidget();
     auto *pageLayout = new QVBoxLayout(page);
     pageLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 下载控制栏：并发限制 + 独立终端（与下载行为直接相关，放在下载页顶部）。
+    auto *bar = new QHBoxLayout();
+    auto *concLabel = new QLabel("并发:");
+    concLabel->setFixedWidth(kFieldLabelWidth);
+    concLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bar->addWidget(concLabel);
+    m_queueEnabledBox = new QCheckBox("限制");
+    bar->addWidget(m_queueEnabledBox);
+    m_maxConcurrentBox = new QSpinBox();
+    m_maxConcurrentBox->setRange(1, 99);
+    m_maxConcurrentBox->setValue(5);
+    m_maxConcurrentBox->setEnabled(false);
+    bar->addWidget(m_maxConcurrentBox);
+    bar->addSpacing(16);
+    m_terminalModeBox = new QCheckBox("独立终端");
+    m_terminalModeBox->setToolTip("下载时在新终端窗口中运行，不经过队列");
+    bar->addWidget(m_terminalModeBox);
+    bar->addStretch(1);
+    pageLayout->addLayout(bar);
+
+    connect(m_queueEnabledBox, &QCheckBox::toggled,
+            this, &MainWindow::onQueueToggled);
+    connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWindow::onMaxConcurrentChanged);
 
     auto *splitter = new QSplitter(Qt::Horizontal);
 
@@ -563,11 +595,14 @@ void MainWindow::setupTabOrder()
 {
     // 严格按界面从上到下、每行从左到右排列。
     QVector<QWidget *> chain;
-    chain << m_input << m_startBtn;                       // 链接行
-    chain << m_saveNameEdit << m_queueEnabledBox         // 保存文件名行
-          << m_maxConcurrentBox << m_terminalModeBox;
+    chain << m_exePath << m_exeBtn                       // 程序 / ffmpeg 行
+          << m_ffmpegPath << m_ffmpegBtn;
+    chain << m_input << m_startBtn;                      // 链接行
+    chain << m_saveNameEdit;                             // 保存文件名行
     chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
     chain << m_centerTabs;                               // 下载列表 | 参数设置
+    chain << m_queueEnabledBox << m_maxConcurrentBox     // 下载页控制栏
+          << m_terminalModeBox;
     for (const Entry &e : m_entries) {
         // --save-name 复用 m_saveNameEdit，它已在上方主链中，
         // 不能在这里重复链接，否则会覆盖主链顺序。
@@ -575,9 +610,7 @@ void MainWindow::setupTabOrder()
             continue;
         chain.append(e.widget);
     }
-    chain << m_exePath << m_exeBtn                       // 程序 / ffmpeg 行
-          << m_ffmpegPath << m_ffmpegBtn;
-    chain << m_cmdPreview << m_copyBtn;                  // 命令预览行
+    chain << m_cmdPreview << m_copyBtn;                  // 命令预览
     chain << m_taskList << m_taskFilter << m_log;        // 下载列表 | 日志
 
     for (int i = 0; i + 1 < chain.size(); ++i)
