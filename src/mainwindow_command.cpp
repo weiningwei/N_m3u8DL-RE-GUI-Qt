@@ -166,7 +166,19 @@ void MainWindow::openOutputDir()
             break;
         }
     }
+    // 与 buildArguments 的默认行为一致：未填写时使用 <程序目录>/download。
     if (dir.isEmpty())
-        dir = QDir::currentPath();
-    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+        dir = QDir(QApplication::applicationDirPath()).filePath("download");
+    const QString abs = QDir::isAbsolutePath(dir)
+                            ? QDir::cleanPath(dir)
+                            : QDir(QApplication::applicationDirPath()).filePath(dir);
+    QDir().mkpath(abs);  // 确保目录存在
+
+#ifdef Q_OS_WIN
+    // 直接调用资源管理器打开目录，避免 QDesktopServices 在部分系统上
+    // 把目录 open 关联到终端等默认处理程序。
+    QProcess::startDetached("explorer.exe", {QDir::toNativeSeparators(abs)});
+#else
+    QDesktopServices::openUrl(QUrl::fromLocalFile(abs));
+#endif
 }
