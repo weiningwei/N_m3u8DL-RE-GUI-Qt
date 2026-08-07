@@ -531,7 +531,8 @@ QWidget *MainWindow::buildSettingsPage()
 
         m_cmdPreview = new QPlainTextEdit();
         m_cmdPreview->setReadOnly(true);
-        m_cmdPreview->setLineWrapMode(QPlainTextEdit::NoWrap);
+        // 按控件宽度自动换行，让长命令在多个可见行中展示。
+        m_cmdPreview->setLineWrapMode(QPlainTextEdit::WidgetWidth);
         m_cmdPreview->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
         m_cmdPreview->setMinimumHeight(48);
         m_cmdPreview->setMaximumHeight(96);
