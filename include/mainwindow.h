@@ -23,6 +23,7 @@ class QCheckBox;
 class QSpinBox;
 class QListWidget;
 class QListWidgetItem;
+class QToolButton;
 
 #include <QProcess>
 
@@ -183,6 +184,8 @@ private:
     QPushButton *m_copyBtn = nullptr;
     QPushButton *m_genBtn = nullptr;
     QPushButton *m_openBtn = nullptr;
+    QToolButton *m_settingsToggle = nullptr;   // 「参数设置」展开/折叠按钮
+    QWidget *m_settingsPanel = nullptr;        // 折叠式参数面板容器
 
     QAction *m_alwaysOnTopAction = nullptr;
     QVector<QAction *> m_themeActions;

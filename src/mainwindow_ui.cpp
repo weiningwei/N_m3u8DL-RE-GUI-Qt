@@ -294,7 +294,35 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
 
 void MainWindow::buildFoldableSettings()
 {
-    // ====== 选项标签页：始终可见 ======
+    // ====== 参数设置折叠开关：默认收起，把空间留给日志与下载列表 ======
+    auto *toggleRow = new QHBoxLayout();
+    m_settingsToggle = new QToolButton();
+    m_settingsToggle->setCheckable(true);
+    m_settingsToggle->setText("参数设置");
+    m_settingsToggle->setArrowType(Qt::RightArrow);
+    m_settingsToggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    m_settingsToggle->setAutoRaise(true);
+    toggleRow->addWidget(m_settingsToggle);
+    toggleRow->addStretch(1);
+    m_root->addLayout(toggleRow);
+
+    m_settingsPanel = new QWidget();
+    auto *panelLayout = new QVBoxLayout(m_settingsPanel);
+    panelLayout->setContentsMargins(0, 0, 0, 0);
+    panelLayout->setSpacing(6);
+    m_root->addWidget(m_settingsPanel);
+
+    connect(m_settingsToggle, &QToolButton::toggled, this, [this](bool on) {
+        m_settingsPanel->setVisible(on);
+        m_settingsToggle->setArrowType(on ? Qt::DownArrow : Qt::RightArrow);
+        auto s = portableSettings();
+        s.setValue("settingsExpanded", on);
+    });
+
+    // 默认收起（loadSettings 会按已保存状态覆盖）
+    m_settingsPanel->setVisible(false);
+
+    // ====== 选项标签页 ======
     m_tabs = new QTabWidget(this);
     const QVector<Category> cats = buildCategories();
     for (const Category &cat : cats) {
@@ -406,9 +434,9 @@ void MainWindow::buildFoldableSettings()
         }
     )");
     m_tabs->setMaximumHeight(260);
-    m_root->addWidget(m_tabs);
+    panelLayout->addWidget(m_tabs);
 
-    // ====== 路径与命令预览（直接展示，不折叠）======
+    // ====== 路径与命令预览 ======
 
     // 程序 / ffmpeg 路径
     {
@@ -421,7 +449,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_exeBtn, &QPushButton::clicked,
                 this, &MainWindow::browseExe);
         exeRow->addWidget(m_exeBtn);
-        m_root->addLayout(exeRow);
+        panelLayout->addLayout(exeRow);
 
         auto *ffRow = new QHBoxLayout();
         ffRow->addWidget(new QLabel("ffmpeg:"));
@@ -432,7 +460,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_ffmpegBtn, &QPushButton::clicked,
                 this, [this]() { browseFor(m_ffmpegPath, false); });
         ffRow->addWidget(m_ffmpegBtn);
-        m_root->addLayout(ffRow);
+        panelLayout->addLayout(ffRow);
 
         connect(m_exePath, &QLineEdit::textChanged,
                 this, [this]() { onPathTextChanged(m_exePath); });
@@ -466,7 +494,7 @@ void MainWindow::buildFoldableSettings()
         connect(delBtn, &QPushButton::clicked, this, &MainWindow::onDeletePreset);
         presetRow->addWidget(delBtn);
 
-        m_root->addLayout(presetRow);
+        panelLayout->addLayout(presetRow);
     }
 
     // 命令预览
@@ -480,7 +508,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_copyBtn, &QPushButton::clicked,
                 this, &MainWindow::copyCommand);
         cmdRow->addWidget(m_copyBtn);
-        m_root->addLayout(cmdRow);
+        panelLayout->addLayout(cmdRow);
     }
 }
 
@@ -536,6 +564,7 @@ void MainWindow::setupTabOrder()
     chain << m_saveNameEdit << m_queueEnabledBox         // 保存文件名行
           << m_maxConcurrentBox << m_terminalModeBox;
     chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
+    chain << m_settingsToggle;                           // 参数设置折叠开关
     chain << m_tabs;                                     // 参数标签页
     for (const Entry &e : m_entries) {
         // --save-name 复用 m_saveNameEdit，它已在上方主链中，
