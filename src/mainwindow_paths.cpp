@@ -49,6 +49,11 @@
 // Path detection & resolution
 // ------------------------------------------------------------------
 
+// 自动检测命中时的绿色提示样式（背景跟随主题：浅色为白、深色为深）。
+static const char *kDetectedStyle =
+    "QLineEdit { border: 2px solid #2e7d32; border-radius: 3px; "
+    "background-color: palette(base); }";
+
 QString MainWindow::findInStandardLocations(const QString &exeName) const
 {
     const QString appDir = QApplication::applicationDirPath();
@@ -80,14 +85,13 @@ void MainWindow::refreshPathHint(QLineEdit *edit, const QString &exeName)
         // 命中自动探测位置：记录绝对路径、显示相对路径、加绿色提示。
         edit->setProperty("absPath", detCanon);
         edit->setToolTip("已自动检测到，可手动修改");
-        edit->setStyleSheet("QLineEdit { border: 2px solid #2e7d32; border-radius: 3px; }");
+        edit->setStyleSheet(kDetectedStyle);
         const QString rel = relativeDisplay(detCanon);
         if (edit->text() != rel)
             edit->setText(rel);
     } else if (!edit->property("absPath").toString().isEmpty()) {
         // 原为自动检测，但内容已不再命中，取消提示。
         edit->setProperty("absPath", QString());
-        edit->setProperty("autoPath", QString());
         edit->setToolTip(QString());
         edit->setStyleSheet(QString());
     }
@@ -97,14 +101,19 @@ void MainWindow::markDetected(QLineEdit *edit)
 {
     // 只要标准位置能检测到 exe/ffmpeg，就标记“已自动检测”，不再要求字段必须为空。
     const QString abs = effectiveAbsolute(edit);
-    edit->setToolTip("已自动检测到，可手动修改");
-    edit->setStyleSheet("QLineEdit { border: 2px solid #2e7d32; border-radius: 3px; }");
-    if (!abs.isEmpty()) {
-        edit->setProperty("absPath", abs);
-        const QString rel = relativeDisplay(abs);
-        if (edit->text() != rel)
-            edit->setText(rel);
+    if (abs.isEmpty()) {
+        // 解析不出绝对路径（如填了不存在的路径）：不残留绿色提示。
+        edit->setProperty("absPath", QString());
+        edit->setToolTip(QString());
+        edit->setStyleSheet(QString());
+        return;
     }
+    edit->setProperty("absPath", abs);
+    edit->setToolTip("已自动检测到，可手动修改");
+    edit->setStyleSheet(kDetectedStyle);
+    const QString rel = relativeDisplay(abs);
+    if (edit->text() != rel)
+        edit->setText(rel);
 }
 
 void MainWindow::onPathTextChanged(QLineEdit *edit)
@@ -113,7 +122,6 @@ void MainWindow::onPathTextChanged(QLineEdit *edit)
     const QString abs = edit->property("absPath").toString();
     if (!abs.isEmpty() && edit->text() != relativeDisplay(abs)) {
         edit->setProperty("absPath", QString());
-        edit->setProperty("autoPath", QString());
         edit->setToolTip(QString());
         edit->setStyleSheet(QString());
     }
