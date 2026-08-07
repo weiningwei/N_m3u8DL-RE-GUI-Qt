@@ -289,6 +289,7 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
         sp->setValue(opt.intDefault);
         sp->setToolTip(opt.tooltip);
         sp->setMinimumHeight(kFieldHeight);
+        sp->setFixedWidth(100);  // 数字框保持紧凑宽度，不随表单拉伸
         *valueWidget = sp;
         return sp;
     }
@@ -444,8 +445,10 @@ QWidget *MainWindow::buildSettingsPage()
                     auto *label = new QLabel(o.label, page_);
                     label->setToolTip(o.tooltip);
                     label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                    // 数字框占整行会显得过宽，奇数末项若为数字则保持左列紧凑宽度
                     const bool spanFull = (o.type == Opt::List)
-                                          || (col == 0 && i == count - 1 && count % 2 == 1);
+                                          || (col == 0 && i == count - 1 && count % 2 == 1
+                                              && o.type != Opt::Int);
                     if (spanFull) {
                         grid->addWidget(label, row, 0);
                         grid->addWidget(field, row, 1, 1, 3);
@@ -454,7 +457,10 @@ QWidget *MainWindow::buildSettingsPage()
                         col = 0;
                     } else {
                         grid->addWidget(label, row, col * 2);
-                        grid->addWidget(field, row, col * 2 + 1);
+                        grid->addWidget(field, row, col * 2 + 1,
+                                        o.type == Opt::Int
+                                            ? Qt::AlignLeft | Qt::AlignVCenter
+                                            : Qt::Alignment());
                         if (col == 1)
                             usedSecondCol = true;
                         if (++col >= 2) { col = 0; ++row; }
