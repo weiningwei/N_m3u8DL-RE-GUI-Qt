@@ -24,6 +24,7 @@ class QSpinBox;
 class QListWidget;
 class QListWidgetItem;
 class QToolButton;
+class QStackedWidget;
 
 #include <QProcess>
 
@@ -171,7 +172,8 @@ private:
     QLineEdit *m_saveNameEdit = nullptr;  // 保存文件名输入框（--save-name）
     QString m_lastAutoName;               // 最近一次自动派生的文件名，用于避免覆盖手动输入
     QString m_lastClipUrl;                // 最近一次自动从剪贴板捕获的链接，用于实时监听时避免覆盖手动输入
-    QTabWidget *m_tabs = nullptr;
+    QListWidget *m_settingsNav = nullptr;      // 参数设置侧边栏
+    QStackedWidget *m_settingsStack = nullptr; // 参数设置内容区
     QPlainTextEdit *m_log = nullptr;
     QLineEdit *m_cmdPreview = nullptr;
     QPushButton *m_startBtn = nullptr;

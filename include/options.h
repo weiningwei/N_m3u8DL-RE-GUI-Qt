@@ -29,10 +29,15 @@ struct Opt {
     QString defaultSubdir;    // Path: 文本框为空时回退到 <程序目录>/defaultSubdir
 };
 
-struct Category {
-    QString name;            // tab title
+// A named group of options shown under a section header inside a page.
+struct OptGroup {
+    QString title;            // 分组标题
     QVector<Opt> opts;
-    bool twoColumn = false;  // 高级等参数多的面板使用两列网格，相同 group 的选项并排
+};
+
+struct Category {
+    QString name;             // 侧边栏条目名
+    QVector<OptGroup> groups; // 页面内的分组
 };
 
 // Builds the full option tree from the documented CLI parameters.

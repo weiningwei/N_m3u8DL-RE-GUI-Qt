@@ -30,6 +30,7 @@
 #include <QListWidget>
 #include <QAbstractItemView>
 #include <QTabWidget>
+#include <QStackedWidget>
 #include <QScrollArea>
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -322,70 +323,90 @@ void MainWindow::buildFoldableSettings()
     // 默认收起（loadSettings 会按已保存状态覆盖）
     m_settingsPanel->setVisible(false);
 
-    // ====== 选项标签页 ======
-    m_tabs = new QTabWidget(this);
+    // ====== 参数设置：左侧分类导航 + 右侧内容区 ======
+    auto *settingsSplit = new QHBoxLayout();
+    settingsSplit->setSpacing(8);
+
+    m_settingsNav = new QListWidget();
+    m_settingsNav->setObjectName("settingsNav");
+    m_settingsNav->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_settingsNav->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_settingsNav->setFixedWidth(110);
+    settingsSplit->addWidget(m_settingsNav);
+
+    m_settingsStack = new QStackedWidget();
+    settingsSplit->addWidget(m_settingsStack, 1);
+
     const QVector<Category> cats = buildCategories();
     for (const Category &cat : cats) {
-        auto *scroll = new QScrollArea(m_tabs);
+        auto *scroll = new QScrollArea();
         scroll->setWidgetResizable(true);
         scroll->setFrameShape(QFrame::NoFrame);
 
         auto *page = new QWidget(scroll);
         auto *vbox = new QVBoxLayout(page);
-        vbox->setSpacing(8);
+        vbox->setSpacing(6);
 
-        auto addFormRow = [&](const Opt &o, QFormLayout *form) {
-            QWidget *valueWidget = nullptr;
-            QWidget *field;
+        // 统一创建选项控件；--save-name 复用主界面输入框，不放入网格。
+        auto makeEntry = [&](const Opt &o, QWidget **field, QWidget **valueWidget) -> bool {
             if (o.flag == "--save-name") {
                 Entry e{o, m_saveNameEdit};
                 m_entries.append(e);
                 connectEntryPreview(e);
-                return;
+                return false;
             }
-            field = makeOptionWidget(o, &valueWidget);
-            auto *label = new QLabel(o.label, page);
-            label->setToolTip(o.tooltip);
-            form->addRow(label, field);
-            Entry e{o, valueWidget};
+            *field = makeOptionWidget(o, valueWidget);
+            Entry e{o, *valueWidget};
             m_entries.append(e);
             connectEntryPreview(e);
+            return true;
         };
 
-        if (cat.twoColumn) {
+        auto addGroupHeader = [&](const QString &title) {
+            auto *header = new QLabel(title, page);
+            header->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 4px;");
+            vbox->addWidget(header);
+        };
+
+        for (const OptGroup &g : cat.groups) {
+            if (g.opts.isEmpty())
+                continue;
+            addGroupHeader(g.title);
+
             QVector<Opt> bools, others;
-            for (const Opt &o : cat.opts)
+            for (const Opt &o : g.opts)
                 (o.type == Opt::Bool ? bools : others).append(o);
 
+            // 开关项：复选框网格
             if (!bools.isEmpty()) {
-                vbox->addWidget(new QLabel("开关选项", page));
                 auto *grid = new QGridLayout();
                 grid->setHorizontalSpacing(12);
                 grid->setVerticalSpacing(4);
                 int row = 0, col = 0;
                 for (const Opt &o : bools) {
                     QWidget *valueWidget = nullptr;
-                    QWidget *field = makeOptionWidget(o, &valueWidget);
+                    QWidget *field = nullptr;
+                    if (!makeEntry(o, &field, &valueWidget))
+                        continue;
                     if (auto *cb = qobject_cast<QCheckBox *>(field))
                         cb->setText(o.label);
                     grid->addWidget(field, row, col);
-                    Entry e{o, valueWidget};
-                    m_entries.append(e);
-                    connectEntryPreview(e);
                     if (++col >= 3) { col = 0; ++row; }
                 }
                 vbox->addLayout(grid);
             }
 
+            // 其他项：label 在上、控件在下的两列网格
             if (!others.isEmpty()) {
-                vbox->addWidget(new QLabel("其他参数", page));
                 auto *grid = new QGridLayout();
                 grid->setHorizontalSpacing(16);
                 grid->setVerticalSpacing(8);
                 int row = 0, col = 0;
                 for (const Opt &o : others) {
                     QWidget *valueWidget = nullptr;
-                    QWidget *field = makeOptionWidget(o, &valueWidget);
+                    QWidget *field = nullptr;
+                    if (!makeEntry(o, &field, &valueWidget))
+                        continue;
                     auto *cell = new QWidget();
                     auto *cellLay = new QVBoxLayout(cell);
                     cellLay->setContentsMargins(0, 0, 0, 0);
@@ -394,47 +415,46 @@ void MainWindow::buildFoldableSettings()
                     cellLay->addWidget(label);
                     cellLay->addWidget(field);
                     grid->addWidget(cell, row, col);
-                    Entry e{o, valueWidget};
-                    m_entries.append(e);
-                    connectEntryPreview(e);
                     if (++col >= 2) { col = 0; ++row; }
                 }
                 vbox->addLayout(grid);
             }
-        } else {
-            auto *form = new QFormLayout();
-            form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-            form->setLabelAlignment(Qt::AlignLeft);
-            form->setHorizontalSpacing(10);
-            for (const Opt &o : cat.opts)
-                addFormRow(o, form);
-            vbox->addLayout(form);
         }
 
         vbox->addStretch(1);
         scroll->setWidget(page);
-        m_tabs->addTab(scroll, cat.name);
+        m_settingsStack->addWidget(scroll);
+        m_settingsNav->addItem(cat.name);
     }
 
-    m_tabs->setStyleSheet(R"(
-        QTabBar::tab {
-            padding: 10px 20px;
-            min-width: 60px;
-            margin-right: 3px;
-            font-size: 13px;
+    connect(m_settingsNav, &QListWidget::currentRowChanged,
+            m_settingsStack, &QStackedWidget::setCurrentIndex);
+    if (m_settingsNav->count() > 0)
+        m_settingsNav->setCurrentRow(0);
+
+    m_settingsNav->setStyleSheet(R"(
+        QListWidget#settingsNav {
+            background: transparent;
             border: none;
-            border-bottom: 2px solid transparent;
+            outline: none;
+            padding: 4px 2px;
         }
-        QTabBar::tab:selected {
-            font-weight: bold;
-            border-bottom: 3px solid #0078d4;
+        QListWidget#settingsNav::item {
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin: 1px 2px;
+            font-size: 13px;
         }
-        QTabBar::tab:hover:!selected {
-            border-bottom: 3px solid #90c0e0;
+        QListWidget#settingsNav::item:hover:!selected {
+            background-color: rgba(128, 128, 128, 50);
+        }
+        QListWidget#settingsNav::item:selected {
+            background-color: palette(highlight);
+            color: palette(highlighted-text);
         }
     )");
-    m_tabs->setMaximumHeight(260);
-    panelLayout->addWidget(m_tabs);
+    m_settingsStack->setMaximumHeight(320);
+    panelLayout->addLayout(settingsSplit);
 
     // ====== 路径与命令预览 ======
 
@@ -565,7 +585,7 @@ void MainWindow::setupTabOrder()
           << m_maxConcurrentBox << m_terminalModeBox;
     chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
     chain << m_settingsToggle;                           // 参数设置折叠开关
-    chain << m_tabs;                                     // 参数标签页
+    chain << m_settingsNav << m_settingsStack;           // 参数设置导航 + 内容
     for (const Entry &e : m_entries) {
         // --save-name 复用 m_saveNameEdit，它已在上方主链中，
         // 不能在这里重复链接，否则会覆盖主链顺序。
