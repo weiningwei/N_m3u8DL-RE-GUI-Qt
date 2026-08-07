@@ -329,37 +329,6 @@ QWidget *MainWindow::buildSettingsPage()
     pageLayout->setContentsMargins(0, 0, 0, 0);
     pageLayout->setSpacing(6);
 
-    // ====== 运行控制：并发限制 + 独立终端（低频一次性设置，与 CLI 选项同放设置页）======
-    {
-        auto *runHeader = new QLabel("运行控制");
-        runHeader->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 4px;");
-        pageLayout->addWidget(runHeader);
-
-        auto *runBar = new QHBoxLayout();
-        auto *concLabel = new QLabel("并发:");
-        concLabel->setFixedWidth(kFieldLabelWidth);
-        concLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        runBar->addWidget(concLabel);
-        m_queueEnabledBox = new QCheckBox("限制");
-        runBar->addWidget(m_queueEnabledBox);
-        m_maxConcurrentBox = new QSpinBox();
-        m_maxConcurrentBox->setRange(1, 99);
-        m_maxConcurrentBox->setValue(5);
-        m_maxConcurrentBox->setEnabled(false);
-        runBar->addWidget(m_maxConcurrentBox);
-        runBar->addSpacing(16);
-        m_terminalModeBox = new QCheckBox("独立终端");
-        m_terminalModeBox->setToolTip("下载时在新终端窗口中运行，不经过队列");
-        runBar->addWidget(m_terminalModeBox);
-        runBar->addStretch(1);
-        pageLayout->addLayout(runBar);
-
-        connect(m_queueEnabledBox, &QCheckBox::toggled,
-                this, &MainWindow::onQueueToggled);
-        connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
-                this, &MainWindow::onMaxConcurrentChanged);
-    }
-
     // ====== 参数设置：左侧分类导航 + 右侧内容区 ======
     auto *settingsSplit = new QHBoxLayout();
     settingsSplit->setSpacing(8);
@@ -404,6 +373,35 @@ QWidget *MainWindow::buildSettingsPage()
             header->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 4px;");
             vbox->addWidget(header);
         };
+
+        // 「基本设置」分类页首个分组：运行控制（并发限制 + 独立终端），
+        // 作为页面内容的一部分，避免在设置页顶部单独突兀摆放。
+        if (cat.name == "基本设置") {
+            addGroupHeader("运行控制");
+            auto *runBar = new QHBoxLayout();
+            auto *concLabel = new QLabel("并发:");
+            concLabel->setFixedWidth(kFieldLabelWidth);
+            concLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            runBar->addWidget(concLabel);
+            m_queueEnabledBox = new QCheckBox("限制");
+            runBar->addWidget(m_queueEnabledBox);
+            m_maxConcurrentBox = new QSpinBox();
+            m_maxConcurrentBox->setRange(1, 99);
+            m_maxConcurrentBox->setValue(5);
+            m_maxConcurrentBox->setEnabled(false);
+            runBar->addWidget(m_maxConcurrentBox);
+            runBar->addSpacing(16);
+            m_terminalModeBox = new QCheckBox("独立终端");
+            m_terminalModeBox->setToolTip("下载时在新终端窗口中运行，不经过队列");
+            runBar->addWidget(m_terminalModeBox);
+            runBar->addStretch(1);
+            vbox->addLayout(runBar);
+
+            connect(m_queueEnabledBox, &QCheckBox::toggled,
+                    this, &MainWindow::onQueueToggled);
+            connect(m_maxConcurrentBox, QOverload<int>::of(&QSpinBox::valueChanged),
+                    this, &MainWindow::onMaxConcurrentChanged);
+        }
 
         for (const OptGroup &g : cat.groups) {
             if (g.opts.isEmpty())
