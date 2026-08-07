@@ -53,10 +53,11 @@
 #include <QOverload>
 
 // ------------------------------------------------------------------
-// 顶部各输入行的统一 label 宽度：保证程序/ffmpeg/链接/保存文件名
-// 各行的输入框在纵向对齐。
+// 顶部各输入行的统一 label 宽度与控件高度：保证程序/ffmpeg/链接/
+// 保存文件名各行的输入框与按钮在纵向对齐且高度一致。
 // ------------------------------------------------------------------
 static constexpr int kFieldLabelWidth = 80;
+static constexpr int kFieldHeight = 28;
 
 // ------------------------------------------------------------------
 // 粘贴时自动去除首尾空白的输入框（用于保存文件名等）。
@@ -177,8 +178,10 @@ void MainWindow::buildPathRow()
     exeRow->addWidget(exeLabel);
     m_exePath = new QLineEdit();
     m_exePath->setPlaceholderText("N_m3u8DL-RE 可执行文件 (如 N_m3u8DL-RE.exe)");
+    m_exePath->setMinimumHeight(kFieldHeight);
     exeRow->addWidget(m_exePath, 1);
     m_exeBtn = new QPushButton("浏览...");
+    m_exeBtn->setMinimumHeight(kFieldHeight);
     connect(m_exeBtn, &QPushButton::clicked,
             this, &MainWindow::browseExe);
     exeRow->addWidget(m_exeBtn);
@@ -191,8 +194,10 @@ void MainWindow::buildPathRow()
     ffRow->addWidget(ffLabel);
     m_ffmpegPath = new QLineEdit();
     m_ffmpegPath->setPlaceholderText("ffmpeg 可执行文件 (可选, 留空则自动查找)");
+    m_ffmpegPath->setMinimumHeight(kFieldHeight);
     ffRow->addWidget(m_ffmpegPath, 1);
     m_ffmpegBtn = new QPushButton("浏览...");
+    m_ffmpegBtn->setMinimumHeight(kFieldHeight);
     connect(m_ffmpegBtn, &QPushButton::clicked,
             this, [this]() { browseFor(m_ffmpegPath, false); });
     ffRow->addWidget(m_ffmpegBtn);
@@ -215,10 +220,10 @@ void MainWindow::buildInputRow()
     m_input = new QLineEdit();
     m_input->installEventFilter(this);  // 双击链接框时自动派生保存文件名
     m_input->setPlaceholderText("输入 m3u8/dash 链接或本地文件 (input)");
-    m_input->setMinimumHeight(28);
+    m_input->setMinimumHeight(kFieldHeight);
     row->addWidget(m_input, 1);
     m_startBtn = new QPushButton("开始下载");
-    m_startBtn->setMinimumHeight(28);
+    m_startBtn->setMinimumHeight(kFieldHeight);
     connect(m_startBtn, &QPushButton::clicked,
             this, &MainWindow::startDownload);
     row->addWidget(m_startBtn);
@@ -238,6 +243,7 @@ void MainWindow::buildControlRow()
     row->addWidget(saveLabel);
     m_saveNameEdit = new TrimmedPasteLineEdit();
     m_saveNameEdit->installEventFilter(this);
+    m_saveNameEdit->setMinimumHeight(kFieldHeight);
     connect(m_saveNameEdit, &QLineEdit::returnPressed,
             this, &MainWindow::startDownload);
     row->addWidget(m_saveNameEdit, 1);
@@ -276,6 +282,7 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
         auto *le = new QLineEdit();
         le->setToolTip(opt.tooltip);
         le->setPlaceholderText(opt.def);
+        le->setMinimumHeight(kFieldHeight);
         if (opt.type == Opt::String) {
             *valueWidget = le;
             return le;
@@ -285,6 +292,7 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
         hl->setContentsMargins(0, 0, 0, 0);
         hl->addWidget(le, 1);
         auto *btn = new QPushButton("浏览");
+        btn->setMinimumHeight(kFieldHeight);
         hl->addWidget(btn);
         const bool dirOnly = (opt.type == Opt::PathDir);
         connect(btn, &QPushButton::clicked, this,
@@ -297,6 +305,7 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
         sp->setRange(0, 999999);
         sp->setValue(opt.intDefault);
         sp->setToolTip(opt.tooltip);
+        sp->setMinimumHeight(kFieldHeight);
         *valueWidget = sp;
         return sp;
     }
@@ -308,6 +317,7 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
         if (idx >= 0)
             cb->setCurrentIndex(idx);
         cb->setToolTip(opt.tooltip);
+        cb->setMinimumHeight(kFieldHeight);
         *valueWidget = cb;
         return cb;
     }
@@ -389,6 +399,7 @@ QWidget *MainWindow::buildSettingsPage()
             m_maxConcurrentBox = new QSpinBox();
             m_maxConcurrentBox->setRange(1, 99);
             m_maxConcurrentBox->setValue(5);
+            m_maxConcurrentBox->setMinimumHeight(kFieldHeight);
             m_maxConcurrentBox->setEnabled(false);
             runBar->addWidget(m_maxConcurrentBox);
             runBar->addSpacing(16);
