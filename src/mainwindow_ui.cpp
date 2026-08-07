@@ -351,7 +351,8 @@ QWidget *MainWindow::buildSettingsPage()
 
         auto *page_ = new QWidget(scroll);
         auto *vbox = new QVBoxLayout(page_);
-        vbox->setSpacing(6);
+        vbox->setSpacing(4);
+        vbox->setContentsMargins(4, 4, 4, 4);
 
         // 统一创建选项控件；--save-name 复用主界面输入框，不放入网格。
         auto makeEntry = [&](const Opt &o, QWidget **field, QWidget **valueWidget) -> bool {
@@ -370,7 +371,7 @@ QWidget *MainWindow::buildSettingsPage()
 
         auto addGroupHeader = [&](const QString &title) {
             auto *header = new QLabel(title, page_);
-            header->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 4px;");
+            header->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 2px;");
             vbox->addWidget(header);
         };
 
@@ -431,27 +432,43 @@ QWidget *MainWindow::buildSettingsPage()
                 vbox->addLayout(grid);
             }
 
-            // 其他项：label 在上、控件在下的两列网格
+            // 其他项：两列表单（标签在左、控件在右）。
+            // 可多值控件(List)与奇数项的末项占整行，避免半行失衡。
             if (!others.isEmpty()) {
                 auto *grid = new QGridLayout();
-                grid->setHorizontalSpacing(16);
-                grid->setVerticalSpacing(8);
+                grid->setHorizontalSpacing(12);
+                grid->setVerticalSpacing(6);
                 int row = 0, col = 0;
-                for (const Opt &o : others) {
+                bool usedSecondCol = false;
+                const int count = others.size();
+                for (int i = 0; i < count; ++i) {
+                    const Opt &o = others.at(i);
                     QWidget *valueWidget = nullptr;
                     QWidget *field = nullptr;
                     if (!makeEntry(o, &field, &valueWidget))
                         continue;
-                    auto *cell = new QWidget();
-                    auto *cellLay = new QVBoxLayout(cell);
-                    cellLay->setContentsMargins(0, 0, 0, 0);
                     auto *label = new QLabel(o.label, page_);
                     label->setToolTip(o.tooltip);
-                    cellLay->addWidget(label);
-                    cellLay->addWidget(field);
-                    grid->addWidget(cell, row, col);
-                    if (++col >= 2) { col = 0; ++row; }
+                    label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                    const bool spanFull = (o.type == Opt::List)
+                                          || (col == 0 && i == count - 1 && count % 2 == 1);
+                    if (spanFull) {
+                        grid->addWidget(label, row, 0);
+                        grid->addWidget(field, row, 1, 1, 3);
+                        usedSecondCol = true;
+                        ++row;
+                        col = 0;
+                    } else {
+                        grid->addWidget(label, row, col * 2);
+                        grid->addWidget(field, row, col * 2 + 1);
+                        if (col == 1)
+                            usedSecondCol = true;
+                        if (++col >= 2) { col = 0; ++row; }
+                    }
                 }
+                grid->setColumnStretch(1, 1);
+                if (usedSecondCol)
+                    grid->setColumnStretch(3, 1);
                 vbox->addLayout(grid);
             }
         }
