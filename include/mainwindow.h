@@ -183,6 +183,7 @@ private:
     QPushButton *m_ffmpegBtn = nullptr;
     QPushButton *m_copyBtn = nullptr;
     QPushButton *m_openBtn = nullptr;
+    QLabel *m_statusHint = nullptr;                  // 状态栏绿色提示（剪贴板自动获取等）
     QTabWidget *m_centerTabs = nullptr;            // 下载列表 | 参数设置
 
     QAction *m_alwaysOnTopAction = nullptr;

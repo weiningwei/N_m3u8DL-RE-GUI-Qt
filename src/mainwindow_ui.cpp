@@ -566,7 +566,8 @@ QWidget *MainWindow::buildDownloadPage()
     // 右侧：日志
     m_log = new QPlainTextEdit();
     m_log->setReadOnly(true);
-    m_log->setLineWrapMode(QPlainTextEdit::NoWrap);
+    // 长行按控件宽度自动换行，避免横向滚动。
+    m_log->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     m_log->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(m_log, &QWidget::customContextMenuRequested,

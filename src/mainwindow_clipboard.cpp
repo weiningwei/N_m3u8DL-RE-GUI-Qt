@@ -44,6 +44,7 @@
 #include <QMenuBar>
 #include <QScrollBar>
 #include <QStatusBar>
+#include <QTimer>
 #include <QOverload>
 
 // ------------------------------------------------------------------
@@ -87,8 +88,17 @@ void MainWindow::maybeAutoFillFromClipboard()
     if (cur.isEmpty() || cur == m_lastClipUrl) {
         m_input->setText(clip);
         m_lastClipUrl = clip;
+        // 写入日志区
         appendLog(QString("已从剪贴板自动获取链接: %1").arg(clip));
-        statusBar()->showMessage(QString("已自动获取剪贴板链接: %1").arg(clip), 4000);
+        // 底部状态栏绿色提示，4 秒后自动隐藏。
+        if (!m_statusHint) {
+            m_statusHint = new QLabel(this);
+            statusBar()->addWidget(m_statusHint, 1);
+        }
+        m_statusHint->setText(QString("已自动获取剪贴板链接: %1").arg(clip));
+        m_statusHint->setStyleSheet("color: #2e7d32;");
+        m_statusHint->show();
+        QTimer::singleShot(4000, m_statusHint, [hint = m_statusHint]() { hint->hide(); });
     }
 }
 
