@@ -5,7 +5,10 @@
 #include <QApplication>
 #include <QActionGroup>
 #include <QKeySequence>
+#include <QStyle>
 #include <QStyleHints>
+#include <QColor>
+#include <QPalette>
 #include <QToolBar>
 #include <QToolButton>
 #include <QMenu>
@@ -161,6 +164,122 @@ void MainWindow::onThemeActionTriggered(QAction *action)
     setTheme(target);
 }
 
+// ------------------------------------------------------------------
+// 深色主题
+// ------------------------------------------------------------------
+
+namespace {
+
+// 深色调色板：确保所有控件（含日志区、下载列表、输入框）背景与文字统一。
+QPalette darkPalette()
+{
+    QPalette p;
+    const QColor window(0x2b, 0x2b, 0x2b);
+    const QColor base(0x1e, 0x1e, 0x1e);
+    const QColor text(0xe6, 0xe6, 0xe6);
+    const QColor subtext(0x9e, 0x9e, 0x9e);
+    const QColor accent(0x0a, 0x84, 0xff);
+
+    p.setColor(QPalette::Window, window);
+    p.setColor(QPalette::WindowText, text);
+    p.setColor(QPalette::Base, base);
+    p.setColor(QPalette::AlternateBase, window.lighter(115));
+    p.setColor(QPalette::ToolTipBase, base);
+    p.setColor(QPalette::ToolTipText, text);
+    p.setColor(QPalette::Text, text);
+    p.setColor(QPalette::PlaceholderText, subtext);
+    p.setColor(QPalette::Button, window);
+    p.setColor(QPalette::ButtonText, text);
+    p.setColor(QPalette::BrightText, QColor(0xff, 0x6b, 0x6b));
+    p.setColor(QPalette::Link, QColor(0x4f, 0xa8, 0xff));
+    p.setColor(QPalette::Highlight, accent);
+    p.setColor(QPalette::HighlightedText, Qt::white);
+
+    p.setColor(QPalette::Light, window.lighter(150));
+    p.setColor(QPalette::Midlight, window.lighter(120));
+    p.setColor(QPalette::Mid, window.lighter(65));
+    p.setColor(QPalette::Dark, window.lighter(40));
+    p.setColor(QPalette::Shadow, QColor(0, 0, 0));
+
+    // 禁用态：保持文字可读，而不是暗淡到看不清。
+    p.setColor(QPalette::Disabled, QPalette::WindowText, subtext);
+    p.setColor(QPalette::Disabled, QPalette::Text, subtext);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, subtext);
+    p.setColor(QPalette::Disabled, QPalette::Highlight, QColor(0x3a, 0x3a, 0x3a));
+    p.setColor(QPalette::Disabled, QPalette::HighlightedText, subtext);
+    return p;
+}
+
+// 深色主题样式表：覆盖原生样式不会跟随调色板的区域
+// （日志区、下载列表、菜单、下拉弹层、滚动条、提示框）。
+QString darkStyleSheet()
+{
+    return QStringLiteral(R"(
+        QLineEdit, QTextEdit, QPlainTextEdit {
+            background-color: #1e1e1e;
+            color: #e6e6e6;
+            border: 1px solid #555555;
+            border-radius: 3px;
+            selection-background-color: #0a84ff;
+            selection-color: #ffffff;
+        }
+        QListWidget {
+            background-color: #1e1e1e;
+            color: #e6e6e6;
+            border: 1px solid #555555;
+            border-radius: 3px;
+            outline: none;
+        }
+        QListWidget::item:selected {
+            background-color: #0a84ff;
+            color: #ffffff;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #2b2b2b;
+            color: #e6e6e6;
+            border: 1px solid #555555;
+            selection-background-color: #0a84ff;
+            selection-color: #ffffff;
+            outline: none;
+        }
+        QMenu {
+            background-color: #2b2b2b;
+            color: #e6e6e6;
+            border: 1px solid #555555;
+        }
+        QMenu::item:selected {
+            background-color: #0a84ff;
+            color: #ffffff;
+        }
+        QMenu::separator {
+            height: 1px;
+            background: #555555;
+            margin: 4px 8px;
+        }
+        QToolTip {
+            background-color: #1e1e1e;
+            color: #e6e6e6;
+            border: 1px solid #555555;
+        }
+        QScrollBar:vertical { background: #2b2b2b; width: 12px; margin: 0; }
+        QScrollBar::handle:vertical {
+            background: #555555; border-radius: 6px; min-height: 24px;
+        }
+        QScrollBar::handle:vertical:hover { background: #6e6e6e; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+        QScrollBar:horizontal { background: #2b2b2b; height: 12px; margin: 0; }
+        QScrollBar::handle:horizontal {
+            background: #555555; border-radius: 6px; min-width: 24px;
+        }
+        QScrollBar::handle:horizontal:hover { background: #6e6e6e; }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }
+    )");
+}
+
+} // namespace
+
 void MainWindow::setTheme(const QString &name)
 {
     m_currentTheme = name;
@@ -171,6 +290,16 @@ void MainWindow::setTheme(const QString &name)
     else if (name == "暗色")
         scheme = Qt::ColorScheme::Dark;
     QApplication::styleHints()->setColorScheme(scheme);
+
+    if (name == "暗色") {
+        // 暗色：应用完整深色调色板 + 样式表，保证所有区域都不再出现白色。
+        QApplication::setPalette(darkPalette());
+        qApp->setStyleSheet(darkStyleSheet());
+    } else {
+        // 浅色 / 跟随系统：恢复平台默认外观。
+        QApplication::setPalette(QApplication::style()->standardPalette());
+        qApp->setStyleSheet(QString());
+    }
 
     for (QAction *a : m_themeActions) {
         a->blockSignals(true);
