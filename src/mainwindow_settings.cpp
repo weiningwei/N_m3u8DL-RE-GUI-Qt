@@ -340,7 +340,6 @@ void MainWindow::saveSettings()
     s.setValue("queueEnabled", m_queueEnabledBox ? m_queueEnabledBox->isChecked() : false);
     s.setValue("maxConcurrent", m_maxConcurrentBox ? m_maxConcurrentBox->value() : 5);
     s.setValue("terminalMode", m_terminalModeBox ? m_terminalModeBox->isChecked() : false);
-    s.setValue("settingsExpanded", m_settingsToggle ? m_settingsToggle->isChecked() : false);
     // 注意：链接/文件 与 保存文件名 不持久化
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
@@ -389,18 +388,6 @@ void MainWindow::loadSettings()
     }
     // 恢复活动预设
     m_currentPreset = s.value("currentPreset", "").toString();
-    // 参数设置面板折叠状态（默认收起，给日志/下载列表更多空间）
-    {
-        const bool expanded = s.value("settingsExpanded", false).toBool();
-        if (m_settingsToggle) {
-            m_settingsToggle->blockSignals(true);
-            m_settingsToggle->setChecked(expanded);
-            m_settingsToggle->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
-            m_settingsToggle->blockSignals(false);
-        }
-        if (m_settingsPanel)
-            m_settingsPanel->setVisible(expanded);
-    }
     // 注意：链接/文件 与 保存文件名 不持久化，故不在此恢复
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")

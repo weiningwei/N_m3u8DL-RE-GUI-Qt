@@ -23,8 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     buildToolbar();
     buildInputRow();         // 链接 + 开始下载
     buildControlRow();       // 保存文件名 + 并发 + 按钮 + 计数
-    buildFoldableSettings(); // ▶ 设置（可折叠面板）
-    buildMonitorArea();      // 下载列表 | 日志 (QSplitter)
+    buildCenterTabs();       // 下载列表 | 参数设置（两个独立页面）
 
     loadSettings();
     refreshPresetList();

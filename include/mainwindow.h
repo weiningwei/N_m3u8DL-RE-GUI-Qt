@@ -129,8 +129,9 @@ private:
     void buildToolbar();
     void buildInputRow();
     void buildControlRow();
-    void buildFoldableSettings();
-    void buildMonitorArea();
+    void buildCenterTabs();
+    QWidget *buildDownloadPage();
+    QWidget *buildSettingsPage();
     void setupTabOrder();
 
     QWidget *makeOptionWidget(const Opt &opt, QWidget **valueWidget);
@@ -186,8 +187,7 @@ private:
     QPushButton *m_copyBtn = nullptr;
     QPushButton *m_genBtn = nullptr;
     QPushButton *m_openBtn = nullptr;
-    QToolButton *m_settingsToggle = nullptr;   // 「参数设置」展开/折叠按钮
-    QWidget *m_settingsPanel = nullptr;        // 折叠式参数面板容器
+    QTabWidget *m_centerTabs = nullptr;            // 下载列表 | 参数设置
 
     QAction *m_alwaysOnTopAction = nullptr;
     QVector<QAction *> m_themeActions;

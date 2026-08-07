@@ -293,35 +293,12 @@ QWidget *MainWindow::makeOptionWidget(const Opt &opt, QWidget **valueWidget)
     return nullptr;
 }
 
-void MainWindow::buildFoldableSettings()
+QWidget *MainWindow::buildSettingsPage()
 {
-    // ====== 参数设置折叠开关：默认收起，把空间留给日志与下载列表 ======
-    auto *toggleRow = new QHBoxLayout();
-    m_settingsToggle = new QToolButton();
-    m_settingsToggle->setCheckable(true);
-    m_settingsToggle->setText("参数设置");
-    m_settingsToggle->setArrowType(Qt::RightArrow);
-    m_settingsToggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    m_settingsToggle->setAutoRaise(true);
-    toggleRow->addWidget(m_settingsToggle);
-    toggleRow->addStretch(1);
-    m_root->addLayout(toggleRow);
-
-    m_settingsPanel = new QWidget();
-    auto *panelLayout = new QVBoxLayout(m_settingsPanel);
-    panelLayout->setContentsMargins(0, 0, 0, 0);
-    panelLayout->setSpacing(6);
-    m_root->addWidget(m_settingsPanel);
-
-    connect(m_settingsToggle, &QToolButton::toggled, this, [this](bool on) {
-        m_settingsPanel->setVisible(on);
-        m_settingsToggle->setArrowType(on ? Qt::DownArrow : Qt::RightArrow);
-        auto s = portableSettings();
-        s.setValue("settingsExpanded", on);
-    });
-
-    // 默认收起（loadSettings 会按已保存状态覆盖）
-    m_settingsPanel->setVisible(false);
+    auto *page = new QWidget();
+    auto *pageLayout = new QVBoxLayout(page);
+    pageLayout->setContentsMargins(0, 0, 0, 0);
+    pageLayout->setSpacing(6);
 
     // ====== 参数设置：左侧分类导航 + 右侧内容区 ======
     auto *settingsSplit = new QHBoxLayout();
@@ -343,8 +320,8 @@ void MainWindow::buildFoldableSettings()
         scroll->setWidgetResizable(true);
         scroll->setFrameShape(QFrame::NoFrame);
 
-        auto *page = new QWidget(scroll);
-        auto *vbox = new QVBoxLayout(page);
+        auto *page_ = new QWidget(scroll);
+        auto *vbox = new QVBoxLayout(page_);
         vbox->setSpacing(6);
 
         // 统一创建选项控件；--save-name 复用主界面输入框，不放入网格。
@@ -363,7 +340,7 @@ void MainWindow::buildFoldableSettings()
         };
 
         auto addGroupHeader = [&](const QString &title) {
-            auto *header = new QLabel(title, page);
+            auto *header = new QLabel(title, page_);
             header->setStyleSheet("font-weight: bold; color: #0078d4; padding-top: 4px;");
             vbox->addWidget(header);
         };
@@ -410,7 +387,7 @@ void MainWindow::buildFoldableSettings()
                     auto *cell = new QWidget();
                     auto *cellLay = new QVBoxLayout(cell);
                     cellLay->setContentsMargins(0, 0, 0, 0);
-                    auto *label = new QLabel(o.label, page);
+                    auto *label = new QLabel(o.label, page_);
                     label->setToolTip(o.tooltip);
                     cellLay->addWidget(label);
                     cellLay->addWidget(field);
@@ -422,7 +399,7 @@ void MainWindow::buildFoldableSettings()
         }
 
         vbox->addStretch(1);
-        scroll->setWidget(page);
+        scroll->setWidget(page_);
         m_settingsStack->addWidget(scroll);
         m_settingsNav->addItem(cat.name);
     }
@@ -453,8 +430,7 @@ void MainWindow::buildFoldableSettings()
             color: palette(highlighted-text);
         }
     )");
-    m_settingsStack->setMaximumHeight(320);
-    panelLayout->addLayout(settingsSplit);
+    pageLayout->addLayout(settingsSplit, 1);
 
     // ====== 路径与命令预览 ======
 
@@ -469,7 +445,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_exeBtn, &QPushButton::clicked,
                 this, &MainWindow::browseExe);
         exeRow->addWidget(m_exeBtn);
-        panelLayout->addLayout(exeRow);
+        pageLayout->addLayout(exeRow);
 
         auto *ffRow = new QHBoxLayout();
         ffRow->addWidget(new QLabel("ffmpeg:"));
@@ -480,7 +456,7 @@ void MainWindow::buildFoldableSettings()
         connect(m_ffmpegBtn, &QPushButton::clicked,
                 this, [this]() { browseFor(m_ffmpegPath, false); });
         ffRow->addWidget(m_ffmpegBtn);
-        panelLayout->addLayout(ffRow);
+        pageLayout->addLayout(ffRow);
 
         connect(m_exePath, &QLineEdit::textChanged,
                 this, [this]() { onPathTextChanged(m_exePath); });
@@ -514,7 +490,7 @@ void MainWindow::buildFoldableSettings()
         connect(delBtn, &QPushButton::clicked, this, &MainWindow::onDeletePreset);
         presetRow->addWidget(delBtn);
 
-        panelLayout->addLayout(presetRow);
+        pageLayout->addLayout(presetRow);
     }
 
     // 命令预览
@@ -528,12 +504,18 @@ void MainWindow::buildFoldableSettings()
         connect(m_copyBtn, &QPushButton::clicked,
                 this, &MainWindow::copyCommand);
         cmdRow->addWidget(m_copyBtn);
-        panelLayout->addLayout(cmdRow);
+        pageLayout->addLayout(cmdRow);
     }
+
+    return page;
 }
 
-void MainWindow::buildMonitorArea()
+QWidget *MainWindow::buildDownloadPage()
 {
+    auto *page = new QWidget();
+    auto *pageLayout = new QVBoxLayout(page);
+    pageLayout->setContentsMargins(0, 0, 0, 0);
+
     auto *splitter = new QSplitter(Qt::Horizontal);
 
     // 左侧：下载列表
@@ -573,7 +555,37 @@ void MainWindow::buildMonitorArea()
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
     splitter->setSizes({200, 500});
-    m_root->addWidget(splitter, 1);
+    pageLayout->addWidget(splitter, 1);
+
+    return page;
+}
+
+void MainWindow::buildCenterTabs()
+{
+    m_centerTabs = new QTabWidget();
+    m_centerTabs->setObjectName("centerTabs");
+    m_centerTabs->addTab(buildDownloadPage(), "下载列表");
+    m_centerTabs->addTab(buildSettingsPage(), "参数设置");
+
+    m_centerTabs->setStyleSheet(R"(
+        QTabWidget#centerTabs::pane { border: none; }
+        QTabBar::tab {
+            padding: 8px 22px;
+            font-size: 13px;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-right: 4px;
+        }
+        QTabBar::tab:selected {
+            font-weight: bold;
+            border-bottom: 3px solid #0078d4;
+        }
+        QTabBar::tab:hover:!selected {
+            border-bottom: 3px solid #90c0e0;
+        }
+    )");
+
+    m_root->addWidget(m_centerTabs, 1);
 }
 
 void MainWindow::setupTabOrder()
@@ -584,8 +596,7 @@ void MainWindow::setupTabOrder()
     chain << m_saveNameEdit << m_queueEnabledBox         // 保存文件名行
           << m_maxConcurrentBox << m_terminalModeBox;
     chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
-    chain << m_settingsToggle;                           // 参数设置折叠开关
-    chain << m_settingsNav << m_settingsStack;           // 参数设置导航 + 内容
+    chain << m_centerTabs;                               // 下载列表 | 参数设置
     for (const Entry &e : m_entries) {
         // --save-name 复用 m_saveNameEdit，它已在上方主链中，
         // 不能在这里重复链接，否则会覆盖主链顺序。
