@@ -26,7 +26,6 @@ MainWindow::MainWindow(QWidget *parent)
     buildCenterTabs();       // 下载列表 | 参数设置（两个独立页面）
 
     loadSettings();
-    refreshPresetList();
     autoDetectExe();
     autoDetectFfmpeg();
     generatePreview();

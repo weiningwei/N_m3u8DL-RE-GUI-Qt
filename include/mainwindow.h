@@ -91,9 +91,6 @@ private slots:
     void maybeStartQueued();
     void onQueueToggled(bool on);
     void onMaxConcurrentChanged(int v);
-    void onPresetSelected(int index);
-    void onSavePreset();
-    void onDeletePreset();
     void removeTaskByTag(const QString &tag);
     void setTaskListText(const QString &tag, const QString &text);
     void stopTaskByTag(const QString &tag);
@@ -146,10 +143,6 @@ private:
 
     void saveSettings();
     void loadSettings();
-    void savePreset(const QString &name);
-    void loadPreset(const QString &name);
-    void refreshPresetList();
-    static QString presetDirPath();
     void autoDetectExe();
     void autoDetectFfmpeg();
 
@@ -209,11 +202,6 @@ private:
     QCheckBox *m_queueEnabledBox = nullptr;  // 「限制同时下载数量」
     QSpinBox *m_maxConcurrentBox = nullptr;  // 「同时最多下载 N 个」
     QCheckBox *m_terminalModeBox = nullptr;  // 「独立终端」
-    QComboBox *m_presetCombo = nullptr;      // 预设选择
-    QLineEdit *m_presetNameEdit = nullptr;   // 预设名称输入
-    QPushButton *m_presetSaveBtn = nullptr;  // 保存预设
-    QPushButton *m_presetDelBtn = nullptr;   // 删除预设
-    QString m_currentPreset;                  // 当前活动预设名
 };
 
 // 便携模式：所有设置保存在程序目录下的 config.ini
