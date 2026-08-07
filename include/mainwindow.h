@@ -144,6 +144,9 @@ private:
 
     void saveSettings();
     void loadSettings();
+    QVariant readEntryValue(const Entry &e) const;
+    void writeEntryValue(const Entry &e, const QVariant &v);
+    QVariant defaultEntryValue(const Entry &e) const;
     void autoDetectExe();
     void autoDetectFfmpeg();
 

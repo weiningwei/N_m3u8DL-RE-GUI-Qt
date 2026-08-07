@@ -2,10 +2,7 @@
 #include "stringlistwidget.h"
 #include "options.h"
 
-#include <QApplication>
-#include <QActionGroup>
 #include <QKeySequence>
-#include <QStyleHints>
 #include <QToolBar>
 #include <QToolButton>
 #include <QMenu>
@@ -18,7 +15,6 @@
 #  include <windows.h>
 #endif
 #include <QHBoxLayout>
-#include <QFormLayout>
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -32,23 +28,10 @@
 #include <QTabWidget>
 #include <QStackedWidget>
 #include <QScrollArea>
-#include <QProcess>
-#include <QProcessEnvironment>
-#include <QFileDialog>
-#include <QMessageBox>
 #include <QClipboard>
 #include <QGuiApplication>
-#include <QClipboard>
-#include <QRegularExpression>
-#include <QDesktopServices>
-#include <QUrl>
-#include <QSettings>
-#include <QFileInfo>
-#include <QDir>
 #include <QFontDatabase>
-#include <QCloseEvent>
 #include <QMenuBar>
-#include <QScrollBar>
 #include <QSplitter>
 #include <QOverload>
 
@@ -630,7 +613,7 @@ void MainWindow::setupTabOrder()
     chain << m_saveNameEdit;                             // 保存文件名行
     chain << m_stopBtn << m_openBtn;                     // 按钮行
     chain << m_centerTabs;                               // 下载列表 | 参数设置
-    chain << m_queueEnabledBox << m_maxConcurrentBox     // 下载页控制栏
+    chain << m_queueEnabledBox << m_maxConcurrentBox     // 参数设置页运行控制
           << m_terminalModeBox;
     for (const Entry &e : m_entries) {
         // --save-name 复用 m_saveNameEdit，它已在上方主链中，

@@ -99,30 +99,8 @@ void MainWindow::resetSettings()
 
 void MainWindow::resetWidgetsToDefaults()
 {
-    for (const Entry &e : m_entries) {
-        switch (e.opt.type) {
-        case Opt::Bool:
-            qobject_cast<QCheckBox *>(e.widget)->setChecked(e.opt.boolDefault);
-            break;
-        case Opt::String:
-        case Opt::PathFile:
-        case Opt::PathDir:
-            qobject_cast<QLineEdit *>(e.widget)->clear();
-            break;
-        case Opt::Int:
-            qobject_cast<QSpinBox *>(e.widget)->setValue(e.opt.intDefault);
-            break;
-        case Opt::Combo: {
-            auto *cb = qobject_cast<QComboBox *>(e.widget);
-            const int i = cb->findText(e.opt.def);
-            cb->setCurrentIndex(i >= 0 ? i : 0);
-            break;
-        }
-        case Opt::List:
-            qobject_cast<StringListWidget *>(e.widget)->clear();
-            break;
-        }
-    }
+    for (const Entry &e : m_entries)
+        writeEntryValue(e, defaultEntryValue(e));
 
     m_exePath->clear();
     m_ffmpegPath->clear();
@@ -332,6 +310,73 @@ void MainWindow::onAlwaysOnTopToggled(bool on)
 // Persistence
 // ------------------------------------------------------------------
 
+QVariant MainWindow::readEntryValue(const Entry &e) const
+{
+    switch (e.opt.type) {
+    case Opt::Bool:
+        return qobject_cast<QCheckBox *>(e.widget)->isChecked();
+    case Opt::String:
+    case Opt::PathFile:
+    case Opt::PathDir:
+        return qobject_cast<QLineEdit *>(e.widget)->text();
+    case Opt::Int:
+        return qobject_cast<QSpinBox *>(e.widget)->value();
+    case Opt::Combo:
+        return qobject_cast<QComboBox *>(e.widget)->currentText();
+    case Opt::List:
+        return qobject_cast<StringListWidget *>(e.widget)->items();
+    }
+    return QVariant();
+}
+
+void MainWindow::writeEntryValue(const Entry &e, const QVariant &v)
+{
+    if (!v.isValid())
+        return;
+    switch (e.opt.type) {
+    case Opt::Bool:
+        qobject_cast<QCheckBox *>(e.widget)->setChecked(v.toBool());
+        break;
+    case Opt::String:
+    case Opt::PathFile:
+    case Opt::PathDir:
+        qobject_cast<QLineEdit *>(e.widget)->setText(v.toString());
+        break;
+    case Opt::Int:
+        qobject_cast<QSpinBox *>(e.widget)->setValue(v.toInt());
+        break;
+    case Opt::Combo: {
+        auto *cb = qobject_cast<QComboBox *>(e.widget);
+        const int i = cb->findText(v.toString());
+        if (i >= 0)
+            cb->setCurrentIndex(i);
+        break;
+    }
+    case Opt::List:
+        qobject_cast<StringListWidget *>(e.widget)->setItems(v.toStringList());
+        break;
+    }
+}
+
+QVariant MainWindow::defaultEntryValue(const Entry &e) const
+{
+    switch (e.opt.type) {
+    case Opt::Bool:
+        return e.opt.boolDefault;
+    case Opt::String:
+    case Opt::PathFile:
+    case Opt::PathDir:
+        return QString();
+    case Opt::Int:
+        return e.opt.intDefault;
+    case Opt::Combo:
+        return e.opt.def;
+    case Opt::List:
+        return QStringList();
+    }
+    return QVariant();
+}
+
 void MainWindow::saveSettings()
 {
     auto s = portableSettings();
@@ -344,26 +389,7 @@ void MainWindow::saveSettings()
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
             continue;
-        const QString key = "opt/" + e.opt.flag;
-        switch (e.opt.type) {
-        case Opt::Bool:
-            s.setValue(key, qobject_cast<QCheckBox *>(e.widget)->isChecked());
-            break;
-        case Opt::String:
-        case Opt::PathFile:
-        case Opt::PathDir:
-            s.setValue(key, qobject_cast<QLineEdit *>(e.widget)->text());
-            break;
-        case Opt::Int:
-            s.setValue(key, qobject_cast<QSpinBox *>(e.widget)->value());
-            break;
-        case Opt::Combo:
-            s.setValue(key, qobject_cast<QComboBox *>(e.widget)->currentText());
-            break;
-        case Opt::List:
-            s.setValue(key, qobject_cast<StringListWidget *>(e.widget)->items());
-            break;
-        }
+        s.setValue("opt/" + e.opt.flag, readEntryValue(e));
     }
 }
 
@@ -390,32 +416,7 @@ void MainWindow::loadSettings()
     for (const Entry &e : m_entries) {
         if (e.opt.flag == "--save-name")
             continue;
-        const QVariant v = s.value("opt/" + e.opt.flag);
-        if (!v.isValid())
-            continue;
-        switch (e.opt.type) {
-        case Opt::Bool:
-            qobject_cast<QCheckBox *>(e.widget)->setChecked(v.toBool());
-            break;
-        case Opt::String:
-        case Opt::PathFile:
-        case Opt::PathDir:
-            qobject_cast<QLineEdit *>(e.widget)->setText(v.toString());
-            break;
-        case Opt::Int:
-            qobject_cast<QSpinBox *>(e.widget)->setValue(v.toInt());
-            break;
-        case Opt::Combo: {
-            auto *cb = qobject_cast<QComboBox *>(e.widget);
-            const int i = cb->findText(v.toString());
-            if (i >= 0)
-                cb->setCurrentIndex(i);
-            break;
-        }
-        case Opt::List:
-            qobject_cast<StringListWidget *>(e.widget)->setItems(v.toStringList());
-            break;
-        }
+        writeEntryValue(e, s.value("opt/" + e.opt.flag));
     }
     applyUiSettings();
 }
