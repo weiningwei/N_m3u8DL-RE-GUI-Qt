@@ -179,7 +179,6 @@ private:
     QPushButton *m_exeBtn = nullptr;
     QPushButton *m_ffmpegBtn = nullptr;
     QPushButton *m_copyBtn = nullptr;
-    QPushButton *m_genBtn = nullptr;
     QPushButton *m_openBtn = nullptr;
     QTabWidget *m_centerTabs = nullptr;            // 下载列表 | 参数设置
 

@@ -243,17 +243,13 @@ void MainWindow::buildControlRow()
     row->addWidget(m_saveNameEdit, 1);
     m_root->addLayout(row);
 
-    // 按钮行：停止 / 生成 / 打开 + 任务数量。
+    // 按钮行：停止 / 打开 + 任务数量。
     auto *btnRow = new QHBoxLayout();
     m_stopBtn = new QPushButton("停止所有");
     m_stopBtn->setEnabled(false);
     connect(m_stopBtn, &QPushButton::clicked,
             this, &MainWindow::stopDownload);
     btnRow->addWidget(m_stopBtn);
-    m_genBtn = new QPushButton("生成命令");
-    connect(m_genBtn, &QPushButton::clicked,
-            this, &MainWindow::generatePreview);
-    btnRow->addWidget(m_genBtn);
     m_openBtn = new QPushButton("打开输出目录");
     connect(m_openBtn, &QPushButton::clicked,
             this, &MainWindow::openOutputDir);
@@ -605,7 +601,7 @@ void MainWindow::setupTabOrder()
           << m_ffmpegPath << m_ffmpegBtn;
     chain << m_input << m_startBtn;                      // 链接行
     chain << m_saveNameEdit;                             // 保存文件名行
-    chain << m_stopBtn << m_genBtn << m_openBtn;         // 按钮行
+    chain << m_stopBtn << m_openBtn;                     // 按钮行
     chain << m_centerTabs;                               // 下载列表 | 参数设置
     chain << m_queueEnabledBox << m_maxConcurrentBox     // 下载页控制栏
           << m_terminalModeBox;
